@@ -23,41 +23,11 @@ export const useUiStore = defineStore('ui', () => {
   const heatmapHover = ref<{ armor: number; power: number } | null>(null);
   const heatmapMetric = ref<HeatmapMetric>("hp");
 
-  function handleRollPointer(event: PointerEvent, plotLeft: number, plotWidth: number): void {
-    const svg = event.currentTarget as SVGSVGElement;
-    const rect = svg.getBoundingClientRect();
-    const x = Math.min(plotWidth, Math.max(0, event.clientX - rect.left - plotLeft));
-    rollHoverPercentile.value = (x / plotWidth) * 100;
-  }
-
-  function clearRollPointer(): void {
-    rollHoverPercentile.value = null;
-  }
-
-  function handleHeatmapPointer(event: PointerEvent, plotLeft: number, plotTop: number, plotWidth: number, plotHeight: number): void {
-    const svg = event.currentTarget as SVGSVGElement;
-    const rect = svg.getBoundingClientRect();
-    const x = Math.min(plotWidth, Math.max(0, event.clientX - rect.left - plotLeft));
-    const y = Math.min(plotHeight, Math.max(0, event.clientY - rect.top - plotTop));
-    heatmapHover.value = {
-      power: Math.round((x / plotWidth) * 150),
-      armor: Math.round(100 - (y / plotHeight) * 100),
-    };
-  }
-
-  function clearHeatmapPointer(): void {
-    heatmapHover.value = null;
-  }
-
   return {
     activeTab,
     hoveredArmor,
     rollHoverPercentile,
     heatmapHover,
     heatmapMetric,
-    handleRollPointer,
-    clearRollPointer,
-    handleHeatmapPointer,
-    clearHeatmapPointer,
   };
 });

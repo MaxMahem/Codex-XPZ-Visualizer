@@ -138,6 +138,10 @@ export const useWeaponsStore = defineStore('weapons', () => {
   }
 
   function setWeaponArmorEffectivenessOverride(weapon: WeaponSystem, value: number | undefined): void {
+    if (value === undefined) {
+      delete weapon.armorEffectivenessOverride;
+      return;
+    }
     weapon.armorEffectivenessOverride = value;
   }
 

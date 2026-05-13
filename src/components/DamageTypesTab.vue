@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import { useAppStore } from "../stores/appStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useDamageTypesStore, damageComponentOptions } from "../stores/damageTypesStore";
 import { useUiStore, heatmapMetrics } from "../stores/uiStore";
@@ -11,16 +10,11 @@ import { formatDamage, percentField, subtleColor } from "../utils/formatters";
 import ColorPicker from "./ColorPicker.vue";
 import PercentInput from "./PercentInput.vue";
 
-const appStore = useAppStore();
+import HeatmapChart from "./HeatmapChart.vue";
+
 const scenarioStore = useScenarioStore();
 const damageTypesStore = useDamageTypesStore();
 const uiStore = useUiStore();
-
-const {
-  heatmapImageHref,
-  heatmapHpContour,
-  inspectedHeatmapCell,
-} = storeToRefs(appStore);
 
 const {
   scenario,
@@ -35,9 +29,6 @@ const {
 const {
   heatmapMetric,
 } = storeToRefs(uiStore);
-
-// Because we need randomProfileFor here in template which isn't directly in store,
-// actually we can just import it.
 </script>
 
 <template>
@@ -196,132 +187,7 @@ const {
           </div>
         </div>
       </div>
-      <div class="heatmap-map">
-        <svg
-          viewBox="0 0 780 350"
-          role="img"
-          aria-label="Expected damage heat map by weapon power and armor"
-          @pointermove="(e) => uiStore.handleHeatmapPointer(e, (58 / 780) * (e.currentTarget as any).getBoundingClientRect().width, (20 / 350) * (e.currentTarget as any).getBoundingClientRect().height, (660 / 780) * (e.currentTarget as any).getBoundingClientRect().width, (270 / 350) * (e.currentTarget as any).getBoundingClientRect().height)"
-          @pointerleave="uiStore.clearHeatmapPointer"
-        >
-          <defs>
-            <clipPath id="heatmap-surface-clip">
-              <rect width="660" height="270" rx="6"></rect>
-            </clipPath>
-          </defs>
-          <g transform="translate(58 20)">
-            <rect class="heatmap-backdrop" width="660" height="270" rx="6"></rect>
-            <g clip-path="url(#heatmap-surface-clip)">
-              <image
-                v-if="heatmapImageHref"
-                class="heatmap-surface"
-                :href="heatmapImageHref"
-                x="0"
-                y="0"
-                width="660"
-                height="270"
-                preserveAspectRatio="none"
-              />
-              <line
-                v-for="power in [0, 25, 50, 75, 100, 125, 150]"
-                :key="`hm-x-${power}`"
-                class="heatmap-grid-line"
-                :x1="appStore.heatmapX(power)"
-                :x2="appStore.heatmapX(power)"
-                y1="0"
-                y2="270"
-              />
-              <line
-                v-for="armor in [0, 25, 50, 75, 100]"
-                :key="`hm-y-${armor}`"
-                class="heatmap-grid-line"
-                x1="0"
-                x2="660"
-                :y1="appStore.heatmapY(armor)"
-                :y2="appStore.heatmapY(armor)"
-              />
-              <line
-                v-for="(segment, index) in heatmapHpContour"
-                :key="`hm-hp-${index}`"
-                class="heatmap-contour"
-                :x1="segment.x1"
-                :y1="segment.y1"
-                :x2="segment.x2"
-                :y2="segment.y2"
-              />
-            </g>
-            <text
-              v-for="power in [0, 25, 50, 75, 100, 125, 150]"
-              :key="`hm-xl-${power}`"
-              class="axis-label"
-              :x="appStore.heatmapX(power)"
-              y="300"
-              text-anchor="middle"
-            >
-              {{ power }}
-            </text>
-            <text
-              v-for="armor in [0, 25, 50, 75, 100]"
-              :key="`hm-yl-${armor}`"
-              class="axis-label"
-              x="-12"
-              :y="appStore.heatmapY(armor) + 4"
-              text-anchor="end"
-            >
-              {{ armor }}
-            </text>
-            <text class="axis-title" x="330" y="334" text-anchor="middle">Weapon power</text>
-            <text
-              class="axis-title"
-              x="-42"
-              y="135"
-              text-anchor="middle"
-              transform="rotate(-90 -42 135)"
-            >
-              Armor
-            </text>
-            <line
-              v-if="inspectedHeatmapCell"
-              class="hover-line"
-              :x1="appStore.heatmapX(inspectedHeatmapCell.power)"
-              :x2="appStore.heatmapX(inspectedHeatmapCell.power)"
-              y1="0"
-              y2="270"
-            />
-            <line
-              v-if="inspectedHeatmapCell"
-              class="hover-line"
-              x1="0"
-              x2="660"
-              :y1="appStore.heatmapY(inspectedHeatmapCell.armor)"
-              :y2="appStore.heatmapY(inspectedHeatmapCell.armor)"
-            />
-            <circle
-              v-if="inspectedHeatmapCell"
-              class="heatmap-inspect-dot"
-              r="5"
-              :cx="appStore.heatmapX(inspectedHeatmapCell.power)"
-              :cy="appStore.heatmapY(inspectedHeatmapCell.armor)"
-            />
-            <g
-              v-if="inspectedHeatmapCell"
-              class="chart-tooltip heatmap-tooltip"
-              :transform="`translate(${appStore.heatmapTooltipX()} ${appStore.heatmapTooltipY()})`"
-            >
-              <rect width="160" height="62" rx="6"></rect>
-              <text x="9" y="14">Power {{ inspectedHeatmapCell.power }}</text>
-              <text x="9" y="28">Armor {{ inspectedHeatmapCell.armor }}</text>
-              <text x="9" y="42">
-                Selected {{ formatDamage(inspectedHeatmapCell.expectedMetric) }}
-              </text>
-              <text x="9" y="55">
-                HP {{ formatDamage(inspectedHeatmapCell.expectedHp) }} | HP+Stun
-                {{ formatDamage(inspectedHeatmapCell.expectedTotal) }}
-              </text>
-            </g>
-          </g>
-        </svg>
-      </div>
+      <HeatmapChart />
     </section>
 
     <div class="damage-type-grid">

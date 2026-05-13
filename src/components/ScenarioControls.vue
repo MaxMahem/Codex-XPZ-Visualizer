@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import { useAppStore } from "../stores/appStore";
+import { useCurrentArmor } from "../composables/useCurrentArmor";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useUiStore } from "../stores/uiStore";
 import { formatDamage } from "../utils/formatters";
 
-const appStore = useAppStore();
 const scenarioStore = useScenarioStore();
 const uiStore = useUiStore();
+const { currentArmor } = useCurrentArmor();
 
-const { currentArmor } = storeToRefs(appStore);
 const { scenario, scenarioTab } = storeToRefs(scenarioStore);
 const { hoveredArmor } = storeToRefs(uiStore);
 </script>

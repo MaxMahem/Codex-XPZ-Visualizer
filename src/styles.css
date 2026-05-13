@@ -287,7 +287,7 @@ h2 {
   margin-bottom: 0;
 }
 
-.panel-section + .panel-section {
+.panel-section+.panel-section {
   margin-top: 24px;
   padding-top: 22px;
   border-top: 1px solid #d9ded8;
@@ -967,7 +967,7 @@ svg {
 
 .weapon-edit-row {
   display: grid;
-  grid-template-columns: 44px minmax(150px, 1.4fr) minmax(130px, 1fr) 68px 82px 68px 72px 120px 38px;
+  grid-template-columns: 44px minmax(150px, 1.4fr) minmax(130px, 1fr) 68px 74px 92px 68px 72px 120px 38px;
   gap: 6px;
   align-items: center;
   padding: 5px 8px;
@@ -1309,7 +1309,7 @@ svg {
     grid-template-columns: 1fr;
   }
 
-  .panel-section + .panel-section {
+  .panel-section+.panel-section {
     margin-top: 0;
     padding-top: 0;
     border-top: 0;
@@ -1386,7 +1386,7 @@ svg {
     display: block;
   }
 
-  .panel-section + .panel-section {
+  .panel-section+.panel-section {
     margin-top: 22px;
     padding-top: 20px;
     border-top: 1px solid #d9ded8;

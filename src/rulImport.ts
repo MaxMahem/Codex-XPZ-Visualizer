@@ -109,7 +109,7 @@ export function importOpenXcomItems(text: string, defaultDamageTypes: DamageType
     weapons.push({
       id: uniqueId(`rul-${item.type.toLowerCase()}`),
       name: cleanRuleName(item.type),
-      category: item.battleType === 2 ? "Ammo" : "Item",
+      category: item.battleType === 2 || item.clipSize !== undefined ? "Ammo" : "Item",
       damageTypeId,
       basePower: Math.round(item.power ?? 0),
       armorPenetration: numberValue(item.damageAlter.ToArmorPre, 0),

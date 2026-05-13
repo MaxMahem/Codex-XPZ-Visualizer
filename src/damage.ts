@@ -35,7 +35,7 @@ export function statValue(stat: DamageBonusStat, scenario: Scenario): number {
   }
 }
 
-export function computeDamageBonus(entries: DamageBonusEntry[], scenario: Scenario): number {
+export function computeDamageBonus(entries: DamageBonusEntry[] = [], scenario: Scenario): number {
   let total = 0;
   for (const entry of entries) {
     const s = statValue(entry.stat, scenario);
@@ -77,7 +77,7 @@ const fallbackRandomProfile: RandomProfile = {
 };
 
 export function modifiedPower(weapon: WeaponSystem, scenario: Scenario): number {
-  return weapon.basePower + computeDamageBonus(weapon.damageBonus, scenario);
+  return weapon.basePower + computeDamageBonus(weapon.damageBonus ?? [], scenario);
 }
 
 export function damageTypeFor(
@@ -164,9 +164,8 @@ export function effectiveArmor(
   armor: number,
   damageTypes: DamageType[],
 ): number {
-  const penetration = clamp(weapon.armorPenetration, 0, 1);
   const armorEffectiveness = armorEffectivenessModifier(weapon, scenario, damageTypes);
-  return armor * scenario.armorEffectiveness * armorEffectiveness * (1 - penetration);
+  return armor * scenario.armorEffectiveness * armorEffectiveness;
 }
 
 export function expectedDamage(

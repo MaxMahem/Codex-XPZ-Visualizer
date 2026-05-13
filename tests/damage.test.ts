@@ -134,6 +134,16 @@ test("weapon armor effectiveness override wins over damage type power scaling", 
   assert.equal(effectiveArmor(overrideWeapon, scenario, 10, [damageType]), 5);
 });
 
+test("ToArmorPre is imported but not applied to armor calculations yet", () => {
+  const toArmorPreWeapon: WeaponSystem = {
+    ...weapon,
+    armorPenetration: 0.9,
+  };
+
+  assert.equal(effectiveArmor(toArmorPreWeapon, scenario, 10, [flatHpType]), 10);
+  assert.equal(damageAtRoll(toArmorPreWeapon, scenario, 10, 1, [flatHpType]), 30);
+});
+
 test("expectedTotalDamage matches the full roll-result engine with randomized stun", () => {
   const damageType: DamageType = {
     ...flatHpType,
@@ -193,4 +203,38 @@ items:
   assert.equal(imported.weapons[0].damageModifierOverrides?.stun, 0.25);
   assert.equal(imported.weapons[0].damageRandomizedOverrides?.stun, true);
   assert.equal(imported.weapons[0].randomProfileIdOverride, "50-150");
+});
+
+test("imports damageAlter ArmorEffectiveness from powered ammo", () => {
+  const source = `
+items:
+  - type: STR_ACAR_LASCANNON_CLIP_HI
+    categories: [STR_BAT_CAT_TANK_AMMO, STR_BAT_CAT_0G, STR_BAT_CAT_EXO]
+    battleType: 2
+    power: 150
+    damageType: 4
+    damageAlter:
+      RandomType: 6
+      IgnoreOverKill: false
+      ArmorEffectiveness: 0.5
+      ToArmorPre: 0.025
+      ToWound: 0.06
+      RandomWound: false
+      FireThreshold: 40
+`;
+
+  const mockDamageTypes: DamageType[] = [
+    flatHpType,
+    flatHpType,
+    flatHpType,
+    flatHpType,
+    { ...flatHpType, id: "4-laser" },
+  ];
+  const imported = importOpenXcomItems(source, mockDamageTypes);
+
+  assert.equal(imported.weapons.length, 1);
+  assert.equal(imported.weapons[0].basePower, 150);
+  assert.equal(imported.weapons[0].damageTypeId, "4-laser");
+  assert.equal(imported.weapons[0].armorEffectivenessOverride, 0.5);
+  assert.equal(imported.weapons[0].armorPenetration, 0.025);
 });

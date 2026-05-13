@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { storeToRefs } from "pinia";
-import { useAppStore } from "../stores/appStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
 import { useDamageTypesStore, damageComponentOptions } from "../stores/damageTypesStore";
@@ -12,7 +11,6 @@ import { formatDamage } from "../utils/formatters";
 import ColorPicker from "./ColorPicker.vue";
 import PercentInput from "./PercentInput.vue";
 
-const appStore = useAppStore();
 const scenarioStore = useScenarioStore();
 const weaponsStore = useWeaponsStore();
 const damageTypesStore = useDamageTypesStore();
@@ -60,6 +58,20 @@ function hasRandomizedOverride(weapon: WeaponSystem, key: DamageComponentKey): b
   return weapon.damageRandomizedOverrides?.[key] !== undefined;
 }
 
+function effectiveArmorEffectiveness(weapon: WeaponSystem): number {
+  const override = weapon.armorEffectivenessOverride;
+  if (override !== undefined) return override;
+  const dt = damageTypeFor(weapon, editableDamageTypes.value);
+  if (dt.armorEffectivenessScalesWithPower) {
+    return 1 + modifiedPower(weapon, scenario.value) / 100;
+  }
+  return dt.armorEffectiveness;
+}
+
+function hasArmorEffectivenessOverride(weapon: WeaponSystem): boolean {
+  return weapon.armorEffectivenessOverride !== undefined;
+}
+
 function bonusPreview(weapon: WeaponSystem): string {
   const bonus = computeDamageBonus(weapon.damageBonus, scenario.value);
   if (bonus === 0 && weapon.damageBonus.length === 0) return "—";
@@ -105,7 +117,8 @@ function bonusPreview(weapon: WeaponSystem): string {
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Editable weapon or ammo display name.">Name</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Damage type (switching resets all weapon-specific 'Alter' overrides to the new type's defaults).">Damage Type</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Base item power before stat bonuses.">Base</span>
-          <span class="has-tip" role="columnheader" tabindex="0" data-tip="Percent of armor ignored before armor is subtracted.">Armor Pen %</span>
+          <span class="has-tip" role="columnheader" tabindex="0" data-tip="Imported from damageAlter.ToArmorPre. It is shown here because it matters, but it is not included in calculations yet.">Pre Armor %</span>
+          <span class="has-tip" role="columnheader" tabindex="0" data-tip="AP armor multiplier. Imported from damageAlter.ArmorEffectiveness when present; otherwise inherited from the damage type. 50% means armor counts at half value.">AP %</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Total power bonus from damage bonus entries for the current scenario stats.">Bonus</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Editable final power after stat bonuses for the current scenario. Editing this adjusts Base.">Power</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Primary damage roll profile. Default uses the selected damage type's profile.">Random</span>
@@ -154,8 +167,20 @@ function bonusPreview(weapon: WeaponSystem): string {
               :modelValue="weapon.armorPenetration"
               class="dense-input number-input"
               :max="100"
-              title="Armor penetration percent"
+              title="ToArmorPre percent. Displayed only; not included in calculations yet."
               @update:modelValue="weaponsStore.setWeaponArmorPenetration(weapon, $event ?? 0)"
+            />
+          </span>
+          <span role="cell">
+            <PercentInput
+              :modelValue="effectiveArmorEffectiveness(weapon)"
+              class="dense-input number-input"
+              :class="{ 'alter-inherited': !hasArmorEffectivenessOverride(weapon) }"
+              :max="500"
+              :title="hasArmorEffectivenessOverride(weapon)
+                ? 'AP percent from weapon damageAlter.ArmorEffectiveness'
+                : `AP percent inherited from ${damageTypeFor(weapon, editableDamageTypes).name}`"
+              @update:modelValue="weaponsStore.setWeaponArmorEffectivenessOverride(weapon, $event)"
             />
           </span>
           <span role="cell" class="readonly-cell" :title="`Damage bonus from ${weapon.damageBonus.length} stat entries`">

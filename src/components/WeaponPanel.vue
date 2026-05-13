@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import { useAppStore } from "../stores/appStore";
+import { useDamageTypesStore } from "../stores/damageTypesStore";
+import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
+import { weaponTooltip } from "../utils/tooltips";
 
-const appStore = useAppStore();
+const damageTypesStore = useDamageTypesStore();
+const scenarioStore = useScenarioStore();
 const weaponsStore = useWeaponsStore();
 const { editableWeapons, selectedIds } = storeToRefs(weaponsStore);
+const { editableDamageTypes } = storeToRefs(damageTypesStore);
+const { scenario } = storeToRefs(scenarioStore);
 </script>
 
 <template>
@@ -24,8 +29,8 @@ const { editableWeapons, selectedIds } = storeToRefs(weaponsStore);
         class="weapon-toggle"
         :class="{ active: selectedIds.includes(weapon.id) }"
         type="button"
-        :title="appStore.weaponTooltip(weapon)"
-        :data-tip="appStore.weaponTooltip(weapon)"
+        :title="weaponTooltip(weapon, scenario, editableDamageTypes)"
+        :data-tip="weaponTooltip(weapon, scenario, editableDamageTypes)"
         @click="weaponsStore.toggleWeapon(weapon.id)"
       >
         <span class="swatch" :style="{ backgroundColor: weapon.color }"></span>
@@ -46,8 +51,8 @@ const { editableWeapons, selectedIds } = storeToRefs(weaponsStore);
       </h2>
       <pre class="formula-code"><code>power = base + Σ(coeff[0]*stat + coeff[1]*stat² + coeff[2]*stat³)
 rolled = power * randomProfile()
-typeArmorEffectiveness = fixedArmor% or (100% + power%)
-postArmor = max(0, rolled - armor * typeArmorEffectiveness * (1 - armorPenetration))
+ap = ArmorEffectiveness override or damage type default
+postArmor = max(0, rolled - armor * ap)
 hp = floor(postArmor * hpPercent * componentRoll())
 stun = floor(postArmor * stunPercent * componentRoll())</code></pre>
     </div>
