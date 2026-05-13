@@ -1,8 +1,13 @@
 import { parse } from "yaml";
-import type { DamageType, WeaponSystem, DamageComponentKey } from "./types";
+import type { DamageType, DamageBonusEntry, DamageBonusStat, WeaponSystem, DamageComponentKey } from "./types";
 
 type Scalar = string | number | boolean;
 type YamlRecord = Record<string, unknown>;
+
+const VALID_BONUS_STATS = new Set<string>([
+  "strength", "melee", "bravery", "firing", "reactions", "throwing",
+  "psiStrength", "psiSkill", "mana", "rank", "flatHundred", "flatOne",
+]);
 
 type ParsedRulItem = {
   type: string;
@@ -11,7 +16,7 @@ type ParsedRulItem = {
   battleType?: number;
   clipSize?: number;
   damageAlter: Record<string, Scalar>;
-  damageBonus: Record<string, Scalar>;
+  damageBonus: Record<string, unknown>;
 };
 
 type ImportResult = {
@@ -40,6 +45,27 @@ const DAMAGE_ALTER_FIELDS: DamageAlterField[] = [
   { alterKey: "ToMana",       target: "mana",   field: "modifier" },
   { alterKey: "RandomMana",   target: "mana",   field: "randomized" },
 ];
+
+function parseDamageBonusEntries(raw: Record<string, unknown>): DamageBonusEntry[] {
+  const entries: DamageBonusEntry[] = [];
+  for (const [key, value] of Object.entries(raw)) {
+    if (!VALID_BONUS_STATS.has(key)) continue;
+    const stat = key as DamageBonusStat;
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      // scalar: stat: 0.5 → linear only
+      entries.push({ stat, coefficients: [value, 0, 0] });
+    } else if (Array.isArray(value)) {
+      // array: stat: [a, b, c] → polynomial
+      const coeffs: [number, number, number] = [0, 0, 0];
+      for (let i = 0; i < Math.min(3, value.length); i++) {
+        coeffs[i] = typeof value[i] === "number" && Number.isFinite(value[i]) ? value[i] : 0;
+      }
+      entries.push({ stat, coefficients: coeffs });
+    }
+  }
+  return entries;
+}
 
 export function importOpenXcomItems(text: string, defaultDamageTypes: DamageType[]): ImportResult {
   const items = parseRulItems(text).filter(
@@ -78,6 +104,8 @@ export function importOpenXcomItems(text: string, defaultDamageTypes: DamageType
       ? numberValue(item.damageAlter.ArmorEffectiveness, 1)
       : undefined;
 
+    const damageBonus = parseDamageBonusEntries(item.damageBonus);
+
     weapons.push({
       id: uniqueId(`rul-${item.type.toLowerCase()}`),
       name: cleanRuleName(item.type),
@@ -85,8 +113,7 @@ export function importOpenXcomItems(text: string, defaultDamageTypes: DamageType
       damageTypeId,
       basePower: Math.round(item.power ?? 0),
       armorPenetration: numberValue(item.damageAlter.ToArmorPre, 0),
-      strengthBonus: numberValue(item.damageBonus.strength, 0),
-      meleeBonus: numberValue(item.damageBonus.melee, 0),
+      damageBonus,
       color: damageType?.color ?? "#6f7f90",
       ...(Object.keys(damageModifierOverrides).length > 0 && { damageModifierOverrides }),
       ...(Object.keys(damageRandomizedOverrides).length > 0 && { damageRandomizedOverrides }),
@@ -108,7 +135,7 @@ function parseRulItems(text: string): ParsedRulItem[] {
     }
 
     const damageAlter = scalarRecord(rawItem.damageAlter);
-    const damageBonus = scalarRecord(rawItem.damageBonus);
+    const damageBonus = rawRecord(rawItem.damageBonus);
     return [
       {
         type: rawItem.type,
@@ -160,6 +187,13 @@ function scalarRecord(value: unknown): Record<string, Scalar> {
       return scalar === undefined ? [] : [[key, scalar]];
     }),
   );
+}
+
+function rawRecord(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) {
+    return {};
+  }
+  return { ...value };
 }
 
 function scalarOrUndefined(value: unknown): Scalar | undefined {

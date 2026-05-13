@@ -42,7 +42,7 @@ const { editableWeapons, selectedIds } = storeToRefs(store);
       >
         Damage Formula
       </h2>
-      <pre class="formula-code"><code>power = base + strengthBonus * strength + meleeBonus * melee
+      <pre class="formula-code"><code>power = base + Σ(coeff[0]*stat + coeff[1]*stat² + coeff[2]*stat³)
 rolled = power * randomProfile()
 typeArmorEffectiveness = fixedArmor% or (100% + power%)
 postArmor = max(0, rolled - armor * typeArmorEffectiveness * (1 - armorPenetration))

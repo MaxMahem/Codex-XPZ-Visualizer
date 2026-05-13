@@ -1,3 +1,22 @@
+export type DamageBonusStat =
+  | "strength"
+  | "melee"
+  | "bravery"
+  | "firing"
+  | "reactions"
+  | "throwing"
+  | "psiStrength"
+  | "psiSkill"
+  | "mana"
+  | "rank"
+  | "flatHundred"
+  | "flatOne";
+
+export interface DamageBonusEntry {
+  stat: DamageBonusStat;
+  coefficients: [number, number, number];
+}
+
 export interface WeaponSystem {
   id: string;
   name: string;
@@ -5,8 +24,7 @@ export interface WeaponSystem {
   damageTypeId: string;
   basePower: number;
   armorPenetration: number;
-  strengthBonus: number;
-  meleeBonus: number;
+  damageBonus: DamageBonusEntry[];
   color: string;
   armorEffectivenessOverride?: number;
   damageModifierOverrides?: Partial<Record<DamageComponentKey, number>>;
@@ -42,6 +60,14 @@ export interface DamageType {
 export interface Scenario {
   strength: number;
   melee: number;
+  bravery: number;
+  firing: number;
+  reactions: number;
+  throwing: number;
+  psiStrength: number;
+  psiSkill: number;
+  mana: number;
+  rank: number;
   hitPoints: number;
   armorEffectiveness: number;
   armorMin: number;

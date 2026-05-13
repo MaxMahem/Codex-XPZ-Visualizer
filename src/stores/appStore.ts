@@ -5,6 +5,7 @@ import {
   buildDamageComponentCurve,
   buildDamageRollResults,
   armorEffectivenessModifier,
+  computeDamageBonus,
   damageTypeFor,
   effectiveArmor,
   expectedDamage,
@@ -17,6 +18,7 @@ import { damageTypes, defaultScenario, randomProfiles, weapons } from "../data";
 import defaultItemsRul from "../data/default-items.rul?raw";
 import { importOpenXcomItems } from "../rulImport";
 import type {
+  DamageBonusStat,
   DamageComponentCurvePoint,
   DamageComponentKey,
   DamagePoint,
@@ -70,8 +72,7 @@ const fallbackWeapon: WeaponSystem = {
   damageTypeId: damageTypes[0]?.id ?? "0-none",
   basePower: 0,
   armorPenetration: 0,
-  strengthBonus: 0,
-  meleeBonus: 0,
+  damageBonus: [],
   color: "#6f7f90",
 };
 
@@ -222,8 +223,7 @@ const heatmapData = computed(() => {
     damageTypeId: selectedDamageType.value.id,
     basePower: 0,
     armorPenetration: 0,
-    strengthBonus: 0,
-    meleeBonus: 0,
+    damageBonus: [],
     color: selectedDamageType.value.color,
   };
   const outcomes = rollOutcomes(syntheticWeapon, editableDamageTypes, randomProfiles);
@@ -768,8 +768,7 @@ function addWeapon(): void {
     damageTypeId,
     basePower: 50,
     armorPenetration: 0,
-    strengthBonus: 0,
-    meleeBonus: 0,
+    damageBonus: [],
     color: "#6f7f90",
   });
   selectedWeaponId.value = id;
@@ -788,8 +787,24 @@ function clearWeapons(): void {
 function setWeaponModifiedPower(weapon: WeaponSystem, value: number): void {
   const desiredPower = Number.isFinite(value) ? value : 0;
   weapon.basePower = Math.round(
-    desiredPower - weapon.strengthBonus * scenario.strength - weapon.meleeBonus * scenario.melee,
+    desiredPower - computeDamageBonus(weapon.damageBonus, scenario),
   );
+}
+
+function addWeaponDamageBonus(weapon: WeaponSystem): void {
+  weapon.damageBonus.push({ stat: "strength", coefficients: [0, 0, 0] });
+}
+
+function removeWeaponDamageBonus(weapon: WeaponSystem, index: number): void {
+  weapon.damageBonus.splice(index, 1);
+}
+
+function setWeaponDamageBonusStat(weapon: WeaponSystem, index: number, stat: DamageBonusStat): void {
+  weapon.damageBonus[index].stat = stat;
+}
+
+function setWeaponDamageBonusCoefficient(weapon: WeaponSystem, index: number, degree: 0 | 1 | 2, value: number): void {
+  weapon.damageBonus[index].coefficients[degree] = Number.isFinite(value) ? value : 0;
 }
 
 async function importItemsFile(event: Event): Promise<void> {
@@ -951,5 +966,9 @@ function setWeaponDamageType(weapon: WeaponSystem, typeId: string): void {
     setWeaponDamageType,
     setWeaponDamageModifierOverride,
     setWeaponDamageRandomizedOverride,
+    addWeaponDamageBonus,
+    removeWeaponDamageBonus,
+    setWeaponDamageBonusStat,
+    setWeaponDamageBonusCoefficient,
   };
 });

@@ -3,7 +3,7 @@ import { ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useAppStore, damageComponentOptions } from "../stores/appStore";
 import { randomProfiles } from "../data";
-import { modifiedPower, damageTypeFor } from "../damage";
+import { modifiedPower, damageTypeFor, computeDamageBonus, DAMAGE_BONUS_STATS } from "../damage";
 import type { WeaponSystem, DamageComponentKey } from "../types";
 import ColorPicker from "./ColorPicker.vue";
 import PercentInput from "./PercentInput.vue";
@@ -46,6 +46,12 @@ function hasRandomizedOverride(weapon: WeaponSystem, key: DamageComponentKey): b
   return weapon.damageRandomizedOverrides?.[key] !== undefined;
 }
 
+function bonusPreview(weapon: WeaponSystem): string {
+  const bonus = computeDamageBonus(weapon.damageBonus, scenario.value);
+  if (bonus === 0 && weapon.damageBonus.length === 0) return "—";
+  const sign = bonus >= 0 ? "+" : "";
+  return `${sign}${Math.round(bonus * 100) / 100}`;
+}
 
 </script>
 
@@ -53,7 +59,7 @@ function hasRandomizedOverride(weapon: WeaponSystem, key: DamageComponentKey): b
   <section class="chart-area weapon-editor-area" aria-label="Weapon data">
     <div class="chart-header">
       <div>
-        <h2>Weapons & Ammo</h2>
+        <h2>Weapons &amp; Ammo</h2>
         <p>
           Edit weapon defaults used by the comparison and expected damage charts.
         </p>
@@ -84,10 +90,9 @@ function hasRandomizedOverride(weapon: WeaponSystem, key: DamageComponentKey): b
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Chart color. Click a row's circle to change it.">Color</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Editable weapon or ammo display name.">Name</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Damage type (switching resets all weapon-specific 'Alter' overrides to the new type's defaults).">Damage Type</span>
-          <span class="has-tip" role="columnheader" tabindex="0" data-tip="Base item power before strength and melee bonuses.">Base</span>
+          <span class="has-tip" role="columnheader" tabindex="0" data-tip="Base item power before stat bonuses.">Base</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Percent of armor ignored before armor is subtracted.">Armor Pen %</span>
-          <span class="has-tip" role="columnheader" tabindex="0" data-tip="Power added per point of scenario Strength.">STR</span>
-          <span class="has-tip" role="columnheader" tabindex="0" data-tip="Power added per point of scenario Melee.">Melee</span>
+          <span class="has-tip" role="columnheader" tabindex="0" data-tip="Total power bonus from damage bonus entries for the current scenario stats.">Bonus</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Editable final power after stat bonuses for the current scenario. Editing this adjusts Base.">Power</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Primary damage roll profile. Default uses the selected damage type's profile.">Random</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Toggle advanced damage alter settings">Alter</span>
@@ -139,11 +144,8 @@ function hasRandomizedOverride(weapon: WeaponSystem, key: DamageComponentKey): b
               @update:modelValue="store.setWeaponArmorPenetration(weapon, $event ?? 0)"
             />
           </span>
-          <span role="cell">
-            <input v-model.number="weapon.strengthBonus" class="dense-input number-input" type="number" min="0" max="10" step="0.05" title="Strength power bonus" />
-          </span>
-          <span role="cell">
-            <input v-model.number="weapon.meleeBonus" class="dense-input number-input" type="number" min="0" max="10" step="0.05" title="Melee power bonus" />
+          <span role="cell" class="readonly-cell" :title="`Damage bonus from ${weapon.damageBonus.length} stat entries`">
+            {{ bonusPreview(weapon) }}
           </span>
           <span role="cell">
             <input
@@ -209,6 +211,78 @@ function hasRandomizedOverride(weapon: WeaponSystem, key: DamageComponentKey): b
                 @change.stop="store.setWeaponDamageRandomizedOverride(weapon, component.key, ($event.target as HTMLInputElement).checked)"
               />
             </template>
+          </div>
+
+          <div class="bonus-section">
+            <div class="bonus-header">
+              <span class="bonus-title">Damage Bonus</span>
+              <span class="bonus-preview" v-if="weapon.damageBonus.length > 0">
+                Total: <strong>{{ bonusPreview(weapon) }}</strong>
+              </span>
+            </div>
+            <div class="bonus-list" v-if="weapon.damageBonus.length > 0">
+              <div class="bonus-list-head">
+                <span>Stat</span>
+                <span>×s</span>
+                <span>×s²</span>
+                <span>×s³</span>
+                <span></span>
+              </div>
+              <div v-for="(entry, index) in weapon.damageBonus" :key="index" class="bonus-row">
+                <select
+                  :value="entry.stat"
+                  class="bonus-select"
+                  title="Stat attribute for this bonus entry"
+                  @pointerdown.stop
+                  @change.stop="store.setWeaponDamageBonusStat(weapon, index, ($event.target as HTMLSelectElement).value as any)"
+                >
+                  <option v-for="stat in DAMAGE_BONUS_STATS" :key="stat.key" :value="stat.key">
+                    {{ stat.label }}
+                  </option>
+                </select>
+                <input
+                  :value="entry.coefficients[0]"
+                  class="bonus-coeff"
+                  type="number"
+                  step="0.01"
+                  title="Linear coefficient (×s)"
+                  @pointerdown.stop
+                  @input.stop="store.setWeaponDamageBonusCoefficient(weapon, index, 0, ($event.target as HTMLInputElement).valueAsNumber)"
+                />
+                <input
+                  :value="entry.coefficients[1]"
+                  class="bonus-coeff"
+                  type="number"
+                  step="0.001"
+                  title="Quadratic coefficient (×s²)"
+                  @pointerdown.stop
+                  @input.stop="store.setWeaponDamageBonusCoefficient(weapon, index, 1, ($event.target as HTMLInputElement).valueAsNumber)"
+                />
+                <input
+                  :value="entry.coefficients[2]"
+                  class="bonus-coeff"
+                  type="number"
+                  step="0.0001"
+                  title="Cubic coefficient (×s³)"
+                  @pointerdown.stop
+                  @input.stop="store.setWeaponDamageBonusCoefficient(weapon, index, 2, ($event.target as HTMLInputElement).valueAsNumber)"
+                />
+                <button
+                  class="bonus-remove"
+                  type="button"
+                  title="Remove this bonus entry"
+                  @pointerdown.stop
+                  @click.stop="store.removeWeaponDamageBonus(weapon, index)"
+                >✕</button>
+              </div>
+            </div>
+            <button
+              class="bonus-add-btn"
+              type="button"
+              title="Add a new stat-based damage bonus entry"
+              @pointerdown.stop
+              @click.stop="store.addWeaponDamageBonus(weapon)"
+            >+ Add Bonus</button>
           </div>
         </div>
       </template>

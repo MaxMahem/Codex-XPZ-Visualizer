@@ -40,17 +40,73 @@ const { scenario, scenarioTab, currentArmor, hoveredArmor } = storeToRefs(store)
       <section v-if="scenarioTab === 'user'" class="panel-section">
         <label
           class="has-tip"
-          data-tip="Strength contributes to weapons that define a strength damage bonus, such as the sample Hammer."
+          data-tip="Strength contributes to weapons that define a strength damage bonus."
         >
           Strength
           <input v-model.number="scenario.strength" type="number" min="0" max="255" />
         </label>
         <label
           class="has-tip"
-          data-tip="Melee contributes to weapons that define a melee damage bonus and is separate from hit chance in this first version."
+          data-tip="Melee accuracy contributes to weapons that define a melee damage bonus."
         >
           Melee
           <input v-model.number="scenario.melee" type="number" min="0" max="255" />
+        </label>
+        <label
+          class="has-tip"
+          data-tip="Bravery contributes to weapons that define a bravery damage bonus."
+        >
+          Bravery
+          <input v-model.number="scenario.bravery" type="number" min="0" max="255" />
+        </label>
+        <label
+          class="has-tip"
+          data-tip="Firing accuracy contributes to weapons that define a firing damage bonus."
+        >
+          Firing
+          <input v-model.number="scenario.firing" type="number" min="0" max="255" />
+        </label>
+        <label
+          class="has-tip"
+          data-tip="Reactions contributes to weapons that define a reactions damage bonus."
+        >
+          Reactions
+          <input v-model.number="scenario.reactions" type="number" min="0" max="255" />
+        </label>
+        <label
+          class="has-tip"
+          data-tip="Throwing accuracy contributes to weapons that define a throwing damage bonus."
+        >
+          Throwing
+          <input v-model.number="scenario.throwing" type="number" min="0" max="255" />
+        </label>
+        <label
+          class="has-tip"
+          data-tip="Psi Strength contributes to weapons that define a psi strength damage bonus."
+        >
+          Psi Strength
+          <input v-model.number="scenario.psiStrength" type="number" min="0" max="255" />
+        </label>
+        <label
+          class="has-tip"
+          data-tip="Psi Skill contributes to weapons that define a psi skill damage bonus."
+        >
+          Psi Skill
+          <input v-model.number="scenario.psiSkill" type="number" min="0" max="255" />
+        </label>
+        <label
+          class="has-tip"
+          data-tip="Mana contributes to weapons that define a mana damage bonus."
+        >
+          Mana
+          <input v-model.number="scenario.mana" type="number" min="0" max="255" />
+        </label>
+        <label
+          class="has-tip"
+          data-tip="Rank contributes to weapons that define a rank damage bonus."
+        >
+          Rank
+          <input v-model.number="scenario.rank" type="number" min="0" max="10" />
         </label>
       </section>
 

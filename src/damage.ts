@@ -1,4 +1,6 @@
 import type {
+  DamageBonusEntry,
+  DamageBonusStat,
   DamageDistributionBucket,
   DamageComponentCurvePoint,
   DamagePoint,
@@ -9,6 +11,39 @@ import type {
   Scenario,
   WeaponSystem,
 } from "./types";
+
+export const DAMAGE_BONUS_STATS: Array<{ key: DamageBonusStat; label: string }> = [
+  { key: "strength", label: "Strength" },
+  { key: "melee", label: "Melee" },
+  { key: "bravery", label: "Bravery" },
+  { key: "firing", label: "Firing" },
+  { key: "reactions", label: "Reactions" },
+  { key: "throwing", label: "Throwing" },
+  { key: "psiStrength", label: "Psi Strength" },
+  { key: "psiSkill", label: "Psi Skill" },
+  { key: "mana", label: "Mana" },
+  { key: "rank", label: "Rank" },
+  { key: "flatHundred", label: "Flat (×100)" },
+  { key: "flatOne", label: "Flat (×1)" },
+];
+
+export function statValue(stat: DamageBonusStat, scenario: Scenario): number {
+  switch (stat) {
+    case "flatHundred": return 100;
+    case "flatOne": return 1;
+    default: return scenario[stat] ?? 0;
+  }
+}
+
+export function computeDamageBonus(entries: DamageBonusEntry[], scenario: Scenario): number {
+  let total = 0;
+  for (const entry of entries) {
+    const s = statValue(entry.stat, scenario);
+    const [a, b, c] = entry.coefficients;
+    total += a * s + b * s * s + c * s * s * s;
+  }
+  return total;
+}
 
 const fallbackDamageType: DamageType = {
   id: "fallback",
@@ -42,11 +77,7 @@ const fallbackRandomProfile: RandomProfile = {
 };
 
 export function modifiedPower(weapon: WeaponSystem, scenario: Scenario): number {
-  return (
-    weapon.basePower +
-    weapon.strengthBonus * scenario.strength +
-    weapon.meleeBonus * scenario.melee
-  );
+  return weapon.basePower + computeDamageBonus(weapon.damageBonus, scenario);
 }
 
 export function damageTypeFor(
