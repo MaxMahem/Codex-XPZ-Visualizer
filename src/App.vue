@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import { useAppStore } from "./stores/appStore";
+import { useUiStore } from "./stores/uiStore";
 
 import ScenarioControls from "./components/ScenarioControls.vue";
 import CompareTab from "./components/CompareTab.vue";
@@ -9,8 +9,8 @@ import WeaponPanel from "./components/WeaponPanel.vue";
 import DamageTypesTab from "./components/DamageTypesTab.vue";
 import WeaponsTab from "./components/WeaponsTab.vue";
 
-const store = useAppStore();
-const { activeTab } = storeToRefs(store);
+const uiStore = useUiStore();
+const { activeTab } = storeToRefs(uiStore);
 </script>
 
 <template>

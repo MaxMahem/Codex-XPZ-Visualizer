@@ -1,24 +1,40 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { useAppStore } from "../stores/appStore";
+import { useScenarioStore } from "../stores/scenarioStore";
+import { useDamageTypesStore, damageComponentOptions } from "../stores/damageTypesStore";
+import { useUiStore, heatmapMetrics } from "../stores/uiStore";
 import { randomProfiles } from "../data";
-import { damageComponentOptions, heatmapMetrics } from "../stores/appStore";
 import type { WeaponSystem } from "../types";
 import { randomProfileFor } from "../damage";
+import { formatDamage, percentField, subtleColor } from "../utils/formatters";
 import ColorPicker from "./ColorPicker.vue";
 import PercentInput from "./PercentInput.vue";
 
-const store = useAppStore();
+const appStore = useAppStore();
+const scenarioStore = useScenarioStore();
+const damageTypesStore = useDamageTypesStore();
+const uiStore = useUiStore();
+
 const {
-  scenario,
-  editableDamageTypes,
-  selectedDamageTypeId,
-  selectedDamageType,
-  heatmapMetric,
   heatmapImageHref,
   heatmapHpContour,
   inspectedHeatmapCell,
-} = storeToRefs(store);
+} = storeToRefs(appStore);
+
+const {
+  scenario,
+} = storeToRefs(scenarioStore);
+
+const {
+  editableDamageTypes,
+  selectedDamageTypeId,
+  selectedDamageType,
+} = storeToRefs(damageTypesStore);
+
+const {
+  heatmapMetric,
+} = storeToRefs(uiStore);
 
 // Because we need randomProfileFor here in template which isn't directly in store,
 // actually we can just import it.
@@ -54,14 +70,14 @@ const {
           class="add-button has-tip"
           type="button"
           data-tip="Create a new editable damage type using neutral defaults."
-          @click="store.addDamageType"
+          @click="damageTypesStore.addDamageType"
         >
           Add Damage Type
         </button>
       </div>
     </div>
 
-    <div class="damage-type-editor" :style="{ backgroundColor: store.subtleColor(selectedDamageType.color) }">
+    <div class="damage-type-editor" :style="{ backgroundColor: subtleColor(selectedDamageType.color) }">
       <div class="damage-type-preview">
         <span
           class="damage-type-swatch"
@@ -92,7 +108,7 @@ const {
           <PercentInput
             :modelValue="selectedDamageType.armorEffectiveness"
             :disabled="selectedDamageType.armorEffectivenessScalesWithPower"
-            @update:modelValue="store.setArmorEffectiveness($event ?? 0)"
+            @update:modelValue="damageTypesStore.setArmorEffectiveness($event ?? 0)"
           />
         </label>
         <label
@@ -138,14 +154,14 @@ const {
           <strong>{{ component.label }}</strong>
           <PercentInput
             :ariaLabel="`${component.label} damage percent`"
-            :modelValue="store.componentPercent(selectedDamageType, component.key)"
-            @update:modelValue="store.setComponentPercent(component.key, $event ?? 0)"
+            :modelValue="damageTypesStore.componentPercent(selectedDamageType, component.key)"
+            @update:modelValue="damageTypesStore.setComponentPercent(component.key, $event ?? 0)"
           />
           <label class="checkbox-label compact-checkbox">
             <input
-              :checked="store.componentRandomized(selectedDamageType, component.key)"
+              :checked="damageTypesStore.componentRandomized(selectedDamageType, component.key)"
               type="checkbox"
-              @change="store.setComponentRandomized(component.key, ($event.target as HTMLInputElement).checked)"
+              @change="damageTypesStore.setComponentRandomized(component.key, ($event.target as HTMLInputElement).checked)"
             />
             <span>Roll</span>
           </label>
@@ -185,8 +201,8 @@ const {
           viewBox="0 0 780 350"
           role="img"
           aria-label="Expected damage heat map by weapon power and armor"
-          @pointermove="store.handleHeatmapPointer"
-          @pointerleave="store.clearHeatmapPointer"
+          @pointermove="(e) => uiStore.handleHeatmapPointer(e, (58 / 780) * (e.currentTarget as any).getBoundingClientRect().width, (20 / 350) * (e.currentTarget as any).getBoundingClientRect().height, (660 / 780) * (e.currentTarget as any).getBoundingClientRect().width, (270 / 350) * (e.currentTarget as any).getBoundingClientRect().height)"
+          @pointerleave="uiStore.clearHeatmapPointer"
         >
           <defs>
             <clipPath id="heatmap-surface-clip">
@@ -210,8 +226,8 @@ const {
                 v-for="power in [0, 25, 50, 75, 100, 125, 150]"
                 :key="`hm-x-${power}`"
                 class="heatmap-grid-line"
-                :x1="store.heatmapX(power)"
-                :x2="store.heatmapX(power)"
+                :x1="appStore.heatmapX(power)"
+                :x2="appStore.heatmapX(power)"
                 y1="0"
                 y2="270"
               />
@@ -221,8 +237,8 @@ const {
                 class="heatmap-grid-line"
                 x1="0"
                 x2="660"
-                :y1="store.heatmapY(armor)"
-                :y2="store.heatmapY(armor)"
+                :y1="appStore.heatmapY(armor)"
+                :y2="appStore.heatmapY(armor)"
               />
               <line
                 v-for="(segment, index) in heatmapHpContour"
@@ -238,7 +254,7 @@ const {
               v-for="power in [0, 25, 50, 75, 100, 125, 150]"
               :key="`hm-xl-${power}`"
               class="axis-label"
-              :x="store.heatmapX(power)"
+              :x="appStore.heatmapX(power)"
               y="300"
               text-anchor="middle"
             >
@@ -249,7 +265,7 @@ const {
               :key="`hm-yl-${armor}`"
               class="axis-label"
               x="-12"
-              :y="store.heatmapY(armor) + 4"
+              :y="appStore.heatmapY(armor) + 4"
               text-anchor="end"
             >
               {{ armor }}
@@ -267,8 +283,8 @@ const {
             <line
               v-if="inspectedHeatmapCell"
               class="hover-line"
-              :x1="store.heatmapX(inspectedHeatmapCell.power)"
-              :x2="store.heatmapX(inspectedHeatmapCell.power)"
+              :x1="appStore.heatmapX(inspectedHeatmapCell.power)"
+              :x2="appStore.heatmapX(inspectedHeatmapCell.power)"
               y1="0"
               y2="270"
             />
@@ -277,30 +293,30 @@ const {
               class="hover-line"
               x1="0"
               x2="660"
-              :y1="store.heatmapY(inspectedHeatmapCell.armor)"
-              :y2="store.heatmapY(inspectedHeatmapCell.armor)"
+              :y1="appStore.heatmapY(inspectedHeatmapCell.armor)"
+              :y2="appStore.heatmapY(inspectedHeatmapCell.armor)"
             />
             <circle
               v-if="inspectedHeatmapCell"
               class="heatmap-inspect-dot"
               r="5"
-              :cx="store.heatmapX(inspectedHeatmapCell.power)"
-              :cy="store.heatmapY(inspectedHeatmapCell.armor)"
+              :cx="appStore.heatmapX(inspectedHeatmapCell.power)"
+              :cy="appStore.heatmapY(inspectedHeatmapCell.armor)"
             />
             <g
               v-if="inspectedHeatmapCell"
               class="chart-tooltip heatmap-tooltip"
-              :transform="`translate(${store.heatmapTooltipX()} ${store.heatmapTooltipY()})`"
+              :transform="`translate(${appStore.heatmapTooltipX()} ${appStore.heatmapTooltipY()})`"
             >
               <rect width="160" height="62" rx="6"></rect>
               <text x="9" y="14">Power {{ inspectedHeatmapCell.power }}</text>
               <text x="9" y="28">Armor {{ inspectedHeatmapCell.armor }}</text>
               <text x="9" y="42">
-                Selected {{ store.formatDamage(inspectedHeatmapCell.expectedMetric) }}
+                Selected {{ formatDamage(inspectedHeatmapCell.expectedMetric) }}
               </text>
               <text x="9" y="55">
-                HP {{ store.formatDamage(inspectedHeatmapCell.expectedHp) }} | HP+Stun
-                {{ store.formatDamage(inspectedHeatmapCell.expectedTotal) }}
+                HP {{ formatDamage(inspectedHeatmapCell.expectedHp) }} | HP+Stun
+                {{ formatDamage(inspectedHeatmapCell.expectedTotal) }}
               </text>
             </g>
           </g>
@@ -314,7 +330,7 @@ const {
         :key="damageType.id"
         class="damage-type-card"
         :class="{ active: selectedDamageTypeId === damageType.id }"
-        :style="{ backgroundColor: store.subtleColor(damageType.color) }"
+        :style="{ backgroundColor: subtleColor(damageType.color) }"
         @click="selectedDamageTypeId = damageType.id"
       >
         <h3>{{ damageType.name }}</h3>
@@ -325,23 +341,23 @@ const {
               {{
                 damageType.armorEffectivenessScalesWithPower
                   ? "100% + Power%"
-                  : `${store.percentField(damageType.armorEffectiveness)}%`
+                  : `${percentField(damageType.armorEffectiveness)}%`
               }}
             </dd>
           </div>
           <div>
             <dt>HP</dt>
-            <dd>{{ store.percentField(damageType.hpDamagePercent) }}%{{ damageType.hpDamageRandomized ? " rng" : "" }}</dd>
+            <dd>{{ percentField(damageType.hpDamagePercent) }}%{{ damageType.hpDamageRandomized ? " rng" : "" }}</dd>
           </div>
           <div>
             <dt>Stun</dt>
-            <dd>{{ store.percentField(damageType.stunDamagePercent) }}%{{ damageType.stunDamageRandomized ? " rng" : "" }}</dd>
+            <dd>{{ percentField(damageType.stunDamagePercent) }}%{{ damageType.stunDamageRandomized ? " rng" : "" }}</dd>
           </div>
           <div v-for="component in damageComponentOptions.slice(2)" :key="component.key">
             <dt>{{ component.label }}</dt>
             <dd>
-              {{ store.percentField(store.componentPercent(damageType, component.key)) }}%{{
-                store.componentRandomized(damageType, component.key) ? " rng" : ""
+              {{ percentField(damageTypesStore.componentPercent(damageType, component.key)) }}%{{
+                damageTypesStore.componentRandomized(damageType, component.key) ? " rng" : ""
               }}
             </dd>
           </div>

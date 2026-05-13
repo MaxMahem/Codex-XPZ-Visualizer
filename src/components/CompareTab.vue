@@ -1,16 +1,22 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { useAppStore } from "../stores/appStore";
+import { useScenarioStore } from "../stores/scenarioStore";
+import { useWeaponsStore } from "../stores/weaponsStore";
+import { formatDamage, formatPercent } from "../utils/formatters";
 
-const store = useAppStore();
+const appStore = useAppStore();
+const scenarioStore = useScenarioStore();
+const weaponsStore = useWeaponsStore();
+
 const {
-  scenario,
   currentArmor,
   chartSeries,
-  selectedWeapons,
   focusedRows,
   targetHpTooltip,
-} = storeToRefs(store);
+} = storeToRefs(appStore);
+const { scenario } = storeToRefs(scenarioStore);
+const { selectedWeapons } = storeToRefs(weaponsStore);
 </script>
 
 <template>
@@ -27,7 +33,7 @@ const {
       </div>
       <div class="target-marker has-tip" tabindex="0" :data-tip="targetHpTooltip">
         <span>Target HP</span>
-        <strong>{{ store.formatDamage(scenario.hitPoints) }}</strong>
+        <strong>{{ formatDamage(scenario.hitPoints) }}</strong>
       </div>
     </div>
 
@@ -75,15 +81,15 @@ const {
             class="hp-line"
             x1="0"
             x2="760"
-            :y1="store.scaleY(scenario.hitPoints)"
-            :y2="store.scaleY(scenario.hitPoints)"
+            :y1="appStore.scaleY(scenario.hitPoints)"
+            :y2="appStore.scaleY(scenario.hitPoints)"
           >
             <title>{{ targetHpTooltip }}</title>
           </line>
           <line
             class="inspect-line"
-            :x1="store.scaleX(currentArmor)"
-            :x2="store.scaleX(currentArmor)"
+            :x1="appStore.scaleX(currentArmor)"
+            :x2="appStore.scaleX(currentArmor)"
             y1="0"
             y2="320"
           >
@@ -93,22 +99,22 @@ const {
             v-for="series in chartSeries"
             :key="series.weapon.id"
             class="damage-line"
-            :d="store.pathFor(series.points)"
+            :d="appStore.pathFor(series.points)"
             :stroke="series.weapon.color"
           >
-            <title>{{ store.weaponTooltip(series.weapon) }}</title>
+            <title>{{ appStore.weaponTooltip(series.weapon) }}</title>
           </path>
           <circle
             v-for="weapon in selectedWeapons"
             :key="`${weapon.id}-dot`"
             r="4"
-            :cx="store.scaleX(currentArmor)"
-            :cy="store.scaleY(Math.round(store.weaponAtArmor(weapon, currentArmor).expected))"
+            :cx="appStore.scaleX(currentArmor)"
+            :cy="appStore.scaleY(Math.round(appStore.weaponAtArmor(weapon, currentArmor).expected))"
             :fill="weapon.color"
           >
             <title>
               {{ weapon.name }} at armor {{ currentArmor }}:
-              {{ store.formatDamage(store.weaponAtArmor(weapon, currentArmor).expected) }} expected damage
+              {{ formatDamage(appStore.weaponAtArmor(weapon, currentArmor).expected) }} expected damage
             </title>
           </circle>
           <text
@@ -119,7 +125,7 @@ const {
             text-anchor="end"
             :y="((index - 1) / 4) * 320 + 4"
           >
-            {{ store.yLabel(index - 1) }}
+            {{ appStore.yLabel(index - 1) }}
             <title>Expected damage value</title>
           </text>
           <text
@@ -130,7 +136,7 @@ const {
             y="350"
             text-anchor="middle"
           >
-            {{ store.xLabel(index - 1) }}
+            {{ appStore.xLabel(index - 1) }}
             <title>Armor value</title>
           </text>
           <text class="axis-title" x="380" y="386" text-anchor="middle">
@@ -159,7 +165,7 @@ const {
         <span class="has-tip" tabindex="0" data-tip="Chance HP damage alone reaches or exceeds target HP at the inspected armor value.">Kill</span>
       </div>
       <div v-for="row in focusedRows" :key="row.weapon.id" class="table-row">
-        <span class="weapon-name has-tip" tabindex="0" :data-tip="store.weaponTooltip(row.weapon)">
+        <span class="weapon-name has-tip" tabindex="0" :data-tip="appStore.weaponTooltip(row.weapon)">
           <i :style="{ backgroundColor: row.weapon.color }"></i>
           {{ row.weapon.name }}
         </span>
@@ -168,35 +174,35 @@ const {
           tabindex="0"
           data-tip="Modified power before random roll and damage factor."
         >
-          {{ store.formatDamage(row.modifiedPower) }}
+          {{ formatDamage(row.modifiedPower) }}
         </span>
         <span
           class="has-tip"
           tabindex="0"
           data-tip="Armor value remaining after armor effectiveness and weapon armor penetration."
         >
-          {{ store.formatDamage(row.effectiveArmor) }}
+          {{ formatDamage(row.effectiveArmor) }}
         </span>
         <span
           class="has-tip"
           tabindex="0"
           data-tip="Expected HP damage after integrating all possible rolls."
         >
-          {{ store.formatDamage(row.point.expected) }}
+          {{ formatDamage(row.point.expected) }}
         </span>
         <span
           class="has-tip"
           tabindex="0"
           data-tip="Expected stun damage after integrating all possible rolls."
         >
-          {{ store.formatDamage(row.expectedStun) }}
+          {{ formatDamage(row.expectedStun) }}
         </span>
         <span
           class="has-tip"
           tabindex="0"
           data-tip="Probability that one hit deals at least the target's HP."
         >
-          {{ store.formatPercent(row.point.killChance) }}
+          {{ formatPercent(row.point.killChance) }}
         </span>
       </div>
     </div>

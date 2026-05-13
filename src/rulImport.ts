@@ -30,20 +30,20 @@ interface DamageAlterField {
 }
 
 const DAMAGE_ALTER_FIELDS: DamageAlterField[] = [
-  { alterKey: "ToHealth",     target: "hp",     field: "modifier" },
-  { alterKey: "RandomHealth", target: "hp",     field: "randomized" },
-  { alterKey: "ToStun",       target: "stun",   field: "modifier" },
-  { alterKey: "RandomStun",   target: "stun",   field: "randomized" },
-  { alterKey: "ToMorale",     target: "morale", field: "modifier" },
+  { alterKey: "ToHealth", target: "hp", field: "modifier" },
+  { alterKey: "RandomHealth", target: "hp", field: "randomized" },
+  { alterKey: "ToStun", target: "stun", field: "modifier" },
+  { alterKey: "RandomStun", target: "stun", field: "randomized" },
+  { alterKey: "ToMorale", target: "morale", field: "modifier" },
   { alterKey: "RandomMorale", target: "morale", field: "randomized" },
-  { alterKey: "ToArmor",      target: "armor",  field: "modifier" },
-  { alterKey: "RandomArmor",  target: "armor",  field: "randomized" },
-  { alterKey: "ToTime",       target: "tu",     field: "modifier" },
-  { alterKey: "RandomTime",   target: "tu",     field: "randomized" },
-  { alterKey: "ToEnergy",     target: "energy", field: "modifier" },
+  { alterKey: "ToArmor", target: "armor", field: "modifier" },
+  { alterKey: "RandomArmor", target: "armor", field: "randomized" },
+  { alterKey: "ToTime", target: "tu", field: "modifier" },
+  { alterKey: "RandomTime", target: "tu", field: "randomized" },
+  { alterKey: "ToEnergy", target: "energy", field: "modifier" },
   { alterKey: "RandomEnergy", target: "energy", field: "randomized" },
-  { alterKey: "ToMana",       target: "mana",   field: "modifier" },
-  { alterKey: "RandomMana",   target: "mana",   field: "randomized" },
+  { alterKey: "ToMana", target: "mana", field: "modifier" },
+  { alterKey: "RandomMana", target: "mana", field: "randomized" },
 ];
 
 function parseDamageBonusEntries(raw: Record<string, unknown>): DamageBonusEntry[] {
@@ -126,7 +126,7 @@ export function importOpenXcomItems(text: string, defaultDamageTypes: DamageType
 }
 
 function parseRulItems(text: string): ParsedRulItem[] {
-  const document = parse(text, { prettyErrors: true }) as YamlRecord | null;
+  const document = parse(text, { prettyErrors: true, maxAliasCount: -1 }) as YamlRecord | null;
   const rawItems = Array.isArray(document?.items) ? document.items : [];
 
   return rawItems.flatMap((rawItem) => {

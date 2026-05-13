@@ -1,22 +1,28 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { useAppStore } from "../stores/appStore";
+import { useScenarioStore } from "../stores/scenarioStore";
+import { useWeaponsStore } from "../stores/weaponsStore";
+import { useUiStore } from "../stores/uiStore";
+import { formatDamage, formatPercent, subtleColor } from "../utils/formatters";
 
 defineProps<{
   embedded?: boolean;
 }>();
 
-const store = useAppStore();
+const appStore = useAppStore();
+const scenarioStore = useScenarioStore();
+const weaponsStore = useWeaponsStore();
+const uiStore = useUiStore();
+
 const {
-  scenario,
   currentArmor,
-  editableWeapons,
-  selectedWeaponId,
-  rollWeapon,
   rollStats,
   componentCurve,
   inspectedCurvePoint,
-} = storeToRefs(store);
+} = storeToRefs(appStore);
+const { scenario } = storeToRefs(scenarioStore);
+const { editableWeapons, selectedWeaponId, rollWeapon } = storeToRefs(weaponsStore);
 </script>
 
 <template>
@@ -42,7 +48,7 @@ const {
         Weapon
         <select
           v-model="selectedWeaponId"
-          @change="store.selectWeapon(($event.target as HTMLSelectElement).value)"
+          @change="weaponsStore.selectWeapon(($event.target as HTMLSelectElement).value)"
         >
           <option v-for="weapon in editableWeapons" :key="weapon.id" :value="weapon.id">
             {{ weapon.name }}
@@ -57,21 +63,21 @@ const {
         tabindex="0"
         data-tip="Chance that armor fully absorbs the damage after the roll."
       >
-        No Damage: <strong>{{ store.formatPercent(rollStats.zeroChance) }}</strong>
+        No Damage: <strong>{{ formatPercent(rollStats.zeroChance) }}</strong>
       </span>
       <span
         class="has-tip"
         tabindex="0"
         data-tip="Chance that one hit reaches or exceeds target HP."
       >
-        Kill: <strong>{{ store.formatPercent(rollStats.killChance) }}</strong>
+        Kill: <strong>{{ formatPercent(rollStats.killChance) }}</strong>
       </span>
       <span
         class="has-tip"
         tabindex="0"
         data-tip="Chance HP damage plus stun damage exceeds target HP."
       >
-        KO: <strong>{{ store.formatPercent(rollStats.koChance) }}</strong>
+        KO: <strong>{{ formatPercent(rollStats.koChance) }}</strong>
       </span>
     </div>
 
@@ -95,13 +101,13 @@ const {
     </div>
 
     <div class="chart-frame roll-frame">
-      <svg
-        viewBox="0 0 840 330"
-        role="img"
-        aria-label="Final damage by cumulative percentile"
-        @pointermove="store.handleRollPointer"
-        @pointerleave="store.clearRollPointer"
-      >
+        <svg
+          viewBox="0 0 840 330"
+          role="img"
+          aria-label="Final damage by cumulative percentile"
+          @pointermove="(e) => uiStore.handleRollPointer(e, (58 / 840) * (e.currentTarget as any).getBoundingClientRect().width, (760 / 840) * (e.currentTarget as any).getBoundingClientRect().width)"
+          @pointerleave="uiStore.clearRollPointer"
+        >
         <g transform="translate(58 22)">
           <line
             v-for="index in 4"
@@ -129,22 +135,22 @@ const {
             class="hp-line"
             x1="0"
             x2="760"
-            :y1="store.rollY(scenario.hitPoints)"
-            :y2="store.rollY(scenario.hitPoints)"
+            :y1="appStore.rollY(scenario.hitPoints)"
+            :y2="appStore.rollY(scenario.hitPoints)"
           >
             <title>Target HP threshold: {{ scenario.hitPoints }} damage</title>
           </line>
           <path
             class="component-area hp-area-fill"
-            :fill="store.subtleColor(rollWeapon.color)"
-            :d="store.componentAreaPath(componentCurve, () => 0, (result) => result.hpDamage)"
+            :fill="subtleColor(rollWeapon.color)"
+            :d="appStore.componentAreaPath(componentCurve, () => 0, (result) => result.hpDamage)"
           >
             <title>{{ rollWeapon.name }} HP damage by cumulative percentile</title>
           </path>
           <path
             class="component-area stun-area-fill"
             :d="
-              store.componentAreaPath(
+              appStore.componentAreaPath(
                 componentCurve,
                 (result) => result.hpDamage,
                 (result) => result.totalDamage,
@@ -157,7 +163,7 @@ const {
             class="damage-line hp-boundary-line"
             :stroke="rollWeapon.color"
             :d="
-              store.rollPath(
+              appStore.rollPath(
                 componentCurve.map((result) => ({
                   ...result,
                   totalDamage: result.hpDamage,
@@ -169,15 +175,15 @@ const {
           </path>
           <path
             class="damage-line stun-boundary-line"
-            :d="store.rollPath(componentCurve)"
+            :d="appStore.rollPath(componentCurve)"
           >
             <title>{{ rollWeapon.name }} total stacked damage by cumulative percentile</title>
           </path>
           <line
             v-if="inspectedCurvePoint"
             class="hover-line"
-            :x1="store.rollX(inspectedCurvePoint.percentile)"
-            :x2="store.rollX(inspectedCurvePoint.percentile)"
+            :x1="appStore.rollX(inspectedCurvePoint.percentile)"
+            :x2="appStore.rollX(inspectedCurvePoint.percentile)"
             y1="0"
             y2="260"
           />
@@ -185,33 +191,33 @@ const {
             v-if="inspectedCurvePoint"
             class="hp-inspect-dot"
             r="4"
-            :cx="store.rollX(inspectedCurvePoint.percentile)"
-            :cy="store.rollY(inspectedCurvePoint.hpDamage)"
+            :cx="appStore.rollX(inspectedCurvePoint.percentile)"
+            :cy="appStore.rollY(inspectedCurvePoint.hpDamage)"
             :fill="rollWeapon.color"
           >
-            <title>{{ store.percentileTooltip(inspectedCurvePoint) }}</title>
+            <title>{{ appStore.percentileTooltip(inspectedCurvePoint) }}</title>
           </circle>
           <circle
             v-if="inspectedCurvePoint"
             class="stun-inspect-dot"
             r="4"
-            :cx="store.rollX(inspectedCurvePoint.percentile)"
-            :cy="store.rollY(inspectedCurvePoint.totalDamage)"
+            :cx="appStore.rollX(inspectedCurvePoint.percentile)"
+            :cy="appStore.rollY(inspectedCurvePoint.totalDamage)"
           >
-            <title>{{ store.percentileTooltip(inspectedCurvePoint) }}</title>
+            <title>{{ appStore.percentileTooltip(inspectedCurvePoint) }}</title>
           </circle>
           <g
             v-if="inspectedCurvePoint"
             class="chart-tooltip"
-            :transform="`translate(${store.inspectorLabelX(inspectedCurvePoint)} ${store.inspectorLabelY(inspectedCurvePoint)})`"
+            :transform="`translate(${appStore.inspectorLabelX(inspectedCurvePoint)} ${appStore.inspectorLabelY(inspectedCurvePoint)})`"
           >
             <rect width="142" height="34" rx="6"></rect>
             <text x="9" y="14">
               {{ Math.round(inspectedCurvePoint.percentile) }}% | HP
-              {{ store.formatDamage(inspectedCurvePoint.hpDamage) }}
+              {{ formatDamage(inspectedCurvePoint.hpDamage) }}
             </text>
             <text x="9" y="27">
-              Stun {{ store.formatDamage(inspectedCurvePoint.stunDamage) }}
+              Stun {{ formatDamage(inspectedCurvePoint.stunDamage) }}
             </text>
           </g>
           <text
@@ -222,7 +228,7 @@ const {
             text-anchor="end"
             :y="((index - 1) / 3) * 260 + 4"
           >
-            {{ store.rollYLabel(index - 1) }}
+            {{ appStore.rollYLabel(index - 1) }}
             <title>Final damage</title>
           </text>
           <text
@@ -233,7 +239,7 @@ const {
             y="292"
             text-anchor="middle"
           >
-            {{ store.rollXLabel(index - 1) }}
+            {{ appStore.rollXLabel(index - 1) }}
             <title>Cumulative chance percentile</title>
           </text>
           <text class="axis-title x-axis-title" x="380" y="322" text-anchor="middle">

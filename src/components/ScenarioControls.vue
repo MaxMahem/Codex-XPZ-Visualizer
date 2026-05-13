@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { useAppStore } from "../stores/appStore";
+import { useScenarioStore } from "../stores/scenarioStore";
+import { useUiStore } from "../stores/uiStore";
+import { formatDamage } from "../utils/formatters";
 
-const store = useAppStore();
-const { scenario, scenarioTab, currentArmor, hoveredArmor } = storeToRefs(store);
+const appStore = useAppStore();
+const scenarioStore = useScenarioStore();
+const uiStore = useUiStore();
+
+const { currentArmor } = storeToRefs(appStore);
+const { scenario, scenarioTab } = storeToRefs(scenarioStore);
+const { hoveredArmor } = storeToRefs(uiStore);
 </script>
 
 <template>
@@ -15,7 +23,7 @@ const { scenario, scenarioTab, currentArmor, hoveredArmor } = storeToRefs(store)
       <span>Scenario</span>
       <small>
         User: STR {{ scenario.strength }}, Melee {{ scenario.melee }} | Target: HP
-        {{ store.formatDamage(scenario.hitPoints) }}, Armor {{ currentArmor }}
+        {{ formatDamage(scenario.hitPoints) }}, Armor {{ currentArmor }}
       </small>
     </summary>
     <div class="scenario-tabs" role="tablist" aria-label="Scenario sections">

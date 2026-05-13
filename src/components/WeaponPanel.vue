@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { useAppStore } from "../stores/appStore";
+import { useWeaponsStore } from "../stores/weaponsStore";
 
-const store = useAppStore();
-const { editableWeapons, selectedIds } = storeToRefs(store);
+const appStore = useAppStore();
+const weaponsStore = useWeaponsStore();
+const { editableWeapons, selectedIds } = storeToRefs(weaponsStore);
 </script>
 
 <template>
@@ -22,9 +24,9 @@ const { editableWeapons, selectedIds } = storeToRefs(store);
         class="weapon-toggle"
         :class="{ active: selectedIds.includes(weapon.id) }"
         type="button"
-        :title="store.weaponTooltip(weapon)"
-        :data-tip="store.weaponTooltip(weapon)"
-        @click="store.toggleWeapon(weapon.id)"
+        :title="appStore.weaponTooltip(weapon)"
+        :data-tip="appStore.weaponTooltip(weapon)"
+        @click="weaponsStore.toggleWeapon(weapon.id)"
       >
         <span class="swatch" :style="{ backgroundColor: weapon.color }"></span>
         <span>
