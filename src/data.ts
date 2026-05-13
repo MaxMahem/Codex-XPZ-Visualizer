@@ -1,7 +1,7 @@
 import type { DamageType, RandomProfile, Scenario, WeaponSystem } from "./types";
 import randomProfilesJson from "./data/randomProfiles.json";
 import damageTypesJson from "./data/damageTypes.json";
-import weaponsJson from "./data/weapons.json";
+
 
 export const defaultScenario: Scenario = {
   strength: 75,
@@ -23,4 +23,4 @@ export const defaultScenario: Scenario = {
 
 export const randomProfiles: RandomProfile[] = randomProfilesJson;
 export const damageTypes: DamageType[] = damageTypesJson;
-export const weapons: WeaponSystem[] = weaponsJson;
+

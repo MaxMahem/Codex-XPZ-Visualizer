@@ -14,7 +14,7 @@ import {
   randomRange,
   rollOutcomes,
 } from "../damage";
-import { damageTypes, defaultScenario, randomProfiles, weapons } from "../data";
+import { damageTypes, defaultScenario, randomProfiles } from "../data";
 import defaultItemsRul from "../data/default-items.rul?raw";
 import { importOpenXcomItems } from "../rulImport";
 import type {
@@ -64,7 +64,7 @@ const shippedImport = importOpenXcomItems(
   defaultItemsRul,
   damageTypes,
 );
-const shippedWeapons = shippedImport.weapons.length > 0 ? shippedImport.weapons : weapons;
+const shippedWeapons = shippedImport.weapons;
 const fallbackWeapon: WeaponSystem = {
   id: "fallback-weapon",
   name: "No Weapon",
