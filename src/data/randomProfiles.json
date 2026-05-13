@@ -1,0 +1,37 @@
+[
+  {
+    "id": "0-200",
+    "label": "0-200",
+    "minPercent": 0,
+    "maxPercent": 200,
+    "dice": 1
+  },
+  {
+    "id": "50-150",
+    "label": "50-150",
+    "minPercent": 50,
+    "maxPercent": 150,
+    "dice": 1
+  },
+  {
+    "id": "50-200",
+    "label": "50-200",
+    "minPercent": 50,
+    "maxPercent": 200,
+    "dice": 1
+  },
+  {
+    "id": "flat-power",
+    "label": "Flat power",
+    "minPercent": 100,
+    "maxPercent": 100,
+    "dice": 1
+  },
+  {
+    "id": "0-200-2d",
+    "label": "0-200 (2 dice)",
+    "minPercent": 0,
+    "maxPercent": 200,
+    "dice": 2
+  }
+]
