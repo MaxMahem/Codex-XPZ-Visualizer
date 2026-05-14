@@ -9,7 +9,7 @@ import {
 } from "../damage";
 import { randomProfiles } from "../data";
 import { damageComponentOptions } from "../stores/damageTypesStore";
-import type { DamageComponentCurvePoint, DamageComponentKey, DamageType, Scenario, WeaponSystem } from "../types";
+import type { DamageComponentCurvePoint, DamageComponentKey, DamageMetricKey, DamageType, Scenario, WeaponSystem } from "../types";
 import { formatDamage, formatPercent } from "./formatters";
 
 export function targetHpTooltip(hitPoints: number): string {
@@ -18,10 +18,15 @@ export function targetHpTooltip(hitPoints: number): string {
 
 export function percentileTooltip(
   result: DamageComponentCurvePoint,
-  visibleComponents: DamageComponentKey[] = ["hp", "stun"],
+  visibleComponents: DamageMetricKey[] = ["hp", "stun"],
 ): string {
   const visible = visibleComponents
-    .map((component) => `${componentLabel(component)} ${formatDamage(componentDamage(result, component))}`)
+    .map((component) => {
+      if (component === "morale") {
+        return `Morale ${formatDamage(result.scaledMoraleDamage)} (${formatDamage(result.moraleDamage)} raw)`;
+      }
+      return `${componentLabel(component)} ${formatDamage(componentDamage(result, component))}`;
+    })
     .join(", ");
   const stack = visibleComponents.includes("hp") || visibleComponents.includes("stun")
     ? `Stack ${formatDamage((visibleComponents.includes("hp") ? result.hpDamage : 0) + (visibleComponents.includes("stun") ? result.stunDamage : 0))}. `
@@ -114,11 +119,13 @@ function damageBonusTooltip(weapon: WeaponSystem): string {
     .join("; ");
 }
 
-function componentDamage(result: DamageComponentCurvePoint, component: DamageComponentKey): number {
+function componentDamage(result: DamageComponentCurvePoint, component: DamageMetricKey): number {
   switch (component) {
     case "hp": return result.hpDamage;
     case "stun": return result.stunDamage;
-    case "morale": return result.moraleDamage;
+    case "hp-stun": return result.hpDamage + result.stunDamage;
+    case "morale": return result.scaledMoraleDamage;
+    case "scaledMorale": return result.scaledMoraleDamage;
     case "armor": return result.armorDamage + result.preArmorDamage;
     case "preArmor": return result.preArmorDamage;
     case "tu": return result.tuDamage;
@@ -127,11 +134,13 @@ function componentDamage(result: DamageComponentCurvePoint, component: DamageCom
   }
 }
 
-function componentLabel(component: DamageComponentKey): string {
+function componentLabel(component: DamageMetricKey): string {
   switch (component) {
     case "hp": return "HP";
     case "stun": return "Stun";
+    case "hp-stun": return "HP + Stun";
     case "morale": return "Morale";
+    case "scaledMorale": return "Morale";
     case "armor": return "Armor";
     case "preArmor": return "Pre Armor";
     case "tu": return "TU";

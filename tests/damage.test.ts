@@ -20,6 +20,7 @@ const scenario: Scenario = {
   armorMin: 0,
   armorMax: 100,
   armorStep: 5,
+  targetBravery: 50,
 };
 
 const flatProfile: RandomProfile = {
@@ -173,6 +174,19 @@ test("non-HP damage components can be configured independently", () => {
 
   assert.equal(expectedDamage(weapon, scenario, 0, [damageType], [flatProfile]), 0);
   assert.equal(expectedComponentDamage(weapon, scenario, 0, [damageType], "morale", [flatProfile]), 20);
+});
+
+test("raw morale component does not depend on target bravery", () => {
+  const damageType: DamageType = {
+    ...flatHpType,
+    hpDamagePercent: 0,
+    moraleDamagePercent: 0.5,
+  };
+  const braveTarget = { ...scenario, targetBravery: 100 };
+  const panickedTarget = { ...scenario, targetBravery: 0 };
+
+  assert.equal(expectedComponentDamage(weapon, braveTarget, 0, [damageType], "morale", [flatProfile]), 20);
+  assert.equal(expectedComponentDamage(weapon, panickedTarget, 0, [damageType], "morale", [flatProfile]), 20);
 });
 
 test("imports powered OpenXcom items mapping to damage types and overrides", () => {

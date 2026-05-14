@@ -561,6 +561,11 @@ svg {
   stroke: #7c4ec7;
 }
 
+.scaledMorale-component-line {
+  stroke: #a06ad7;
+  stroke-dasharray: 5 4;
+}
+
 .armor-component-line {
   stroke: #60706a;
 }
@@ -602,6 +607,10 @@ svg {
 
 .morale-inspect-dot {
   fill: #7c4ec7;
+}
+
+.scaledMorale-inspect-dot {
+  fill: #a06ad7;
 }
 
 .armor-inspect-dot {

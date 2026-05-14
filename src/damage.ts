@@ -231,7 +231,7 @@ export function expectedComponentDamage(
         rollMultiplier,
         damageTypes,
       );
-    return sum + expectedRawComponent(baseDamage, percent, !!randomized, scenario, component) * outcome.probability;
+    return sum + expectedRawComponent(baseDamage, percent, !!randomized) * outcome.probability;
   }, 0);
 }
 
@@ -269,7 +269,7 @@ export function averageRollDamage(
   return Math.max(
     0,
     Math.max(0, power * averageRoll - effectiveArmor(weapon, scenario, armor, damageTypes)) *
-      (weapon.damageModifierOverrides?.hp ?? getDamageComponent(damageType, "hp").percent),
+    (weapon.damageModifierOverrides?.hp ?? getDamageComponent(damageType, "hp").percent),
   );
 }
 
@@ -332,37 +332,26 @@ function componentRollOutcomes(randomized: boolean): Array<{ multiplier: number;
   }));
 }
 
-function expectedIntegerComponent(
-  baseDamage: number,
-  percent: number,
-  randomized: boolean,
-  scenario: Scenario,
-  componentKey: DamageComponentKey,
-): number {
+function expectedIntegerComponent(baseDamage: number, percent: number, randomized: boolean): number {
   return Math.round(
-    expectedRawComponent(baseDamage, percent, randomized, scenario, componentKey),
+    expectedRawComponent(baseDamage, percent, randomized),
   );
 }
 
-function expectedRawComponent(
-  baseDamage: number,
-  percent: number,
-  randomized: boolean,
-  scenario: Scenario,
-  componentKey: DamageComponentKey,
-): number {
+function expectedRawComponent(baseDamage: number, percent: number, randomized: boolean): number {
   if (percent <= 0 || baseDamage <= 0) {
     return 0;
   }
 
   const outcomes = componentRollOutcomes(randomized);
   return outcomes.reduce((sum, roll) => {
-    let val = Math.floor(baseDamage * percent * roll.multiplier);
-    if (componentKey === "morale") {
-      val = Math.floor(((110 - scenario.targetBravery) * val) / 100);
-    }
-    return sum + val * roll.probability;
+    const value = Math.floor(baseDamage * percent * roll.multiplier);
+    return sum + value * roll.probability;
   }, 0);
+}
+
+function scaledMoraleDamage(rawMoraleDamage: number, scenario: Scenario): number {
+  return Math.floor(((110 - scenario.targetBravery) * rawMoraleDamage) / 100);
 }
 
 export function buildDamageComponentCurve(
@@ -409,14 +398,14 @@ export function buildDamageComponentCurve(
       outcome.rollPercent / 100,
       damageTypes,
     );
-    const hpDamage = expectedIntegerComponent(postArmorDamage, hpPercent, !!hpRandomized, scenario, "hp");
-    const stunDamage = expectedIntegerComponent(postArmorDamage, stunPercent, !!stunRandomized, scenario, "stun");
-    const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, !!moraleRandomized, scenario, "morale");
-    const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, !!armorRandomized, scenario, "armor");
-    const preArmorDamage = expectedIntegerComponent(rolledPower, preArmorPercent, !!preArmorRandomized, scenario, "preArmor");
-    const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, !!tuRandomized, scenario, "tu");
-    const energyDamage = expectedIntegerComponent(postArmorDamage, energyPercent, !!energyRandomized, scenario, "energy");
-    const manaDamage = expectedIntegerComponent(postArmorDamage, manaPercent, !!manaRandomized, scenario, "mana");
+    const hpDamage = expectedIntegerComponent(postArmorDamage, hpPercent, !!hpRandomized);
+    const stunDamage = expectedIntegerComponent(postArmorDamage, stunPercent, !!stunRandomized);
+    const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, !!moraleRandomized);
+    const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, !!armorRandomized);
+    const preArmorDamage = expectedIntegerComponent(rolledPower, preArmorPercent, !!preArmorRandomized);
+    const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, !!tuRandomized);
+    const energyDamage = expectedIntegerComponent(postArmorDamage, energyPercent, !!energyRandomized);
+    const manaDamage = expectedIntegerComponent(postArmorDamage, manaPercent, !!manaRandomized);
 
     return {
       percentile: cumulative * 100,
@@ -424,6 +413,7 @@ export function buildDamageComponentCurve(
       hpDamage,
       stunDamage,
       moraleDamage,
+      scaledMoraleDamage: scaledMoraleDamage(moraleDamage, scenario),
       armorDamage,
       preArmorDamage,
       tuDamage,
@@ -470,7 +460,7 @@ export function buildDamageRollResults(
 ): DamageRollResult[] {
   const results: DamageRollResult[] = [];
   const damageType = damageTypeFor(weapon, damageTypes);
-  
+
   const hpComp = getDamageComponent(damageType, "hp");
   const stunComp = getDamageComponent(damageType, "stun");
   const moraleComp = getDamageComponent(damageType, "morale");
@@ -515,17 +505,18 @@ export function buildDamageRollResults(
       for (const stunRoll of stunRolls) {
         const hpDamage = Math.floor(postArmorDamage * hpPercent * hpRoll.multiplier);
         const stunDamage = Math.floor(postArmorDamage * stunPercent * stunRoll.multiplier);
-        const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, !!moraleRandomized, scenario, "morale");
-        const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, !!armorRandomized, scenario, "armor");
-        const preArmorDamage = expectedIntegerComponent(rolledPower, preArmorPercent, !!preArmorRandomized, scenario, "preArmor");
-        const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, !!tuRandomized, scenario, "tu");
-        const energyDamage = expectedIntegerComponent(postArmorDamage, energyPercent, !!energyRandomized, scenario, "energy");
-        const manaDamage = expectedIntegerComponent(postArmorDamage, manaPercent, !!manaRandomized, scenario, "mana");
+        const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, !!moraleRandomized);
+        const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, !!armorRandomized);
+        const preArmorDamage = expectedIntegerComponent(rolledPower, preArmorPercent, !!preArmorRandomized);
+        const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, !!tuRandomized);
+        const energyDamage = expectedIntegerComponent(postArmorDamage, energyPercent, !!energyRandomized);
+        const manaDamage = expectedIntegerComponent(postArmorDamage, manaPercent, !!manaRandomized);
         results.push({
           rollPercent: outcome.rollPercent,
           hpDamage,
           stunDamage,
           moraleDamage,
+          scaledMoraleDamage: scaledMoraleDamage(moraleDamage, scenario),
           armorDamage,
           preArmorDamage,
           tuDamage,

@@ -12,7 +12,7 @@ import { useScenarioStore } from "../stores/scenarioStore";
 import { useUiStore } from "../stores/uiStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
 import { useCurrentArmor } from "./useCurrentArmor";
-import type { DamageComponentCurvePoint, DamageComponentKey } from "../types";
+import type { DamageComponentCurvePoint, DamageMetricKey } from "../types";
 
 export function useRollDamageModel() {
   const scenarioStore = useScenarioStore();
@@ -60,7 +60,7 @@ export function useRollDamageModel() {
       randomProfiles,
     ),
   );
-  
+
   const rollExpectedComponents = computed(() =>
     expectedDamageComponents(
       rollWeapon.value,
@@ -124,11 +124,13 @@ export function useRollDamageModel() {
   };
 }
 
-function visibleComponentDamage(result: DamageComponentCurvePoint, component: DamageComponentKey): number {
+function visibleComponentDamage(result: DamageComponentCurvePoint, component: DamageMetricKey): number {
   switch (component) {
     case "hp": return result.hpDamage;
     case "stun": return result.stunDamage;
-    case "morale": return result.moraleDamage;
+    case "hp-stun": return result.hpDamage + result.stunDamage;
+    case "morale": return result.scaledMoraleDamage;
+    case "scaledMorale": return result.scaledMoraleDamage;
     case "armor": return result.armorDamage + result.preArmorDamage;
     case "preArmor": return result.preArmorDamage;
     case "tu": return result.tuDamage;

@@ -37,6 +37,7 @@ export function useHeatmapModel() {
       stun: 1,
       "hp-stun": 1,
       morale: 1,
+      scaledMorale: 1,
       armor: 1,
       preArmor: 1,
       tu: 1,
@@ -219,6 +220,9 @@ export function useHeatmapModel() {
   ): number {
     if (metric === "hp-stun") {
       return hpStunValues[index];
+    }
+    if (metric === "scaledMorale") {
+      return Math.floor(((110 - scenarioStore.scenario.targetBravery) * values.morale[index]) / 100);
     }
     if (metric === "armor") {
       return values.armor[index] + values.preArmor[index];

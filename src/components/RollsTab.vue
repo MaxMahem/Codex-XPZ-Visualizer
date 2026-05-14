@@ -9,7 +9,7 @@ import { useUiStore } from "../stores/uiStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
 import RollsChart from "./RollsChart.vue";
 import { formatPercent, formatAverage } from "../utils/formatters";
-import type { DamageComponentKey } from "../types";
+import type { DamageMetricKey } from "../types";
 
 defineProps<{
   embedded?: boolean;
@@ -29,7 +29,7 @@ const rollLegendComponents = computed(() =>
   damageComponentOptions.filter((component) => component.key !== "preArmor"),
 );
 
-const componentSwatches: Record<DamageComponentKey, string> = {
+const componentSwatches: Partial<Record<DamageMetricKey, string>> = {
   hp: "hp-area",
   stun: "stun-area",
   morale: "morale-line",
@@ -40,11 +40,21 @@ const componentSwatches: Record<DamageComponentKey, string> = {
   mana: "mana-line",
 };
 
-function rollLegendTotal(component: DamageComponentKey): number {
+function rollLegendTotal(component: DamageMetricKey): string {
   if (component === "armor") {
-    return rollExpectedComponents.value.armor + rollExpectedComponents.value.preArmor;
+    return formatAverage(rollExpectedComponents.value.armor + rollExpectedComponents.value.preArmor);
   }
-  return rollExpectedComponents.value[component];
+  if (component === "hp-stun") {
+    return formatAverage(rollExpectedComponents.value.hp + rollExpectedComponents.value.stun);
+  }
+  if (component === "morale") {
+    const scaled = Math.floor(((110 - scenario.value.targetBravery) * rollExpectedComponents.value.morale) / 100);
+    return `${formatAverage(scaled)} (${formatAverage(rollExpectedComponents.value.morale)})`;
+  }
+  if (component === "scaledMorale") {
+    return formatAverage(Math.floor(((110 - scenario.value.targetBravery) * rollExpectedComponents.value.morale) / 100));
+  }
+  return formatAverage(rollExpectedComponents.value[component]);
 }
 </script>
 
@@ -118,17 +128,19 @@ function rollLegendTotal(component: DamageComponentKey): number {
           ? 'Toggle HP damage. HP forms the base filled area when visible.'
           : component.key === 'stun'
             ? 'Toggle stun damage. Stun stacks above HP when HP is also visible.'
-            : component.key === 'armor'
-              ? 'Toggle armor damage plus pre-armor damage as one non-stacked line.'
-              : `Toggle ${component.label} damage as its own non-stacked line.`"
+            : component.key === 'morale'
+              ? 'Toggle target-scaled morale damage. The parenthetical number is the raw weapon morale before target bravery.'
+              : component.key === 'armor'
+                ? 'Toggle armor damage plus pre-armor damage as one non-stacked line.'
+                : `Toggle ${component.label} damage as its own non-stacked line.`"
       >
         <i
           class="legend-swatch"
-          :class="componentSwatches[component.key]"
+          :class="componentSwatches[component.key] ?? 'component-line'"
           :style="component.key === 'hp' ? { backgroundColor: rollWeapon.color } : undefined"
         ></i>
         <span class="legend-label">{{ component.label }}</span>
-        <span class="legend-total">{{ formatAverage(rollLegendTotal(component.key)) }}</span>
+        <span class="legend-total">{{ rollLegendTotal(component.key) }}</span>
       </button>
     </div>
 

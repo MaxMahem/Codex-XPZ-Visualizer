@@ -4,7 +4,7 @@ import { useRollDamageModel } from "../composables/useRollDamageModel";
 import { useUiStore } from "../stores/uiStore";
 import { formatDamage } from "../utils/formatters";
 import { percentileTooltip } from "../utils/tooltips";
-import type { DamageComponentCurvePoint, DamageComponentKey } from "../types";
+import type { DamageComponentCurvePoint, DamageMetricKey } from "../types";
 
 const uiStore = useUiStore();
 const { rollWeapon, rollStats, componentCurve, inspectedCurvePoint } = useRollDamageModel();
@@ -35,18 +35,20 @@ function rollPath(results: DamageComponentCurvePoint[]): string {
     .join(" ");
 }
 
-function componentLinePath(component: Exclude<DamageComponentKey, "hp" | "stun">): string {
+function componentLinePath(component: Exclude<DamageMetricKey, "hp" | "stun" | "hp-stun">): string {
   return rollPath(componentCurve.value.map((result) => ({
     ...result,
     totalDamage: componentDamage(result, component),
   })));
 }
 
-function componentDamage(result: DamageComponentCurvePoint, component: DamageComponentKey): number {
+function componentDamage(result: DamageComponentCurvePoint, component: DamageMetricKey): number {
   switch (component) {
     case "hp": return result.hpDamage;
     case "stun": return result.stunDamage;
-    case "morale": return result.moraleDamage;
+    case "hp-stun": return result.hpDamage + result.stunDamage;
+    case "morale": return result.scaledMoraleDamage;
+    case "scaledMorale": return result.scaledMoraleDamage;
     case "armor": return result.armorDamage + result.preArmorDamage;
     case "preArmor": return result.preArmorDamage;
     case "tu": return result.tuDamage;
@@ -55,7 +57,7 @@ function componentDamage(result: DamageComponentCurvePoint, component: DamageCom
   }
 }
 
-function componentVisible(component: DamageComponentKey): boolean {
+function componentVisible(component: DamageMetricKey): boolean {
   return visibleRollComponents.value.includes(component);
 }
 
@@ -80,7 +82,11 @@ function tooltipRows(point: DamageComponentCurvePoint): string[] {
     rows.push(`HP + Stun ${formatDamage(stackedDamage(point))}`);
   }
   for (const component of visibleRollComponents.value) {
-    rows.push(`${componentLabel(component)} ${formatDamage(componentDamage(point, component))}`);
+    if (component === "morale") {
+      rows.push(`Morale ${formatDamage(point.scaledMoraleDamage)} (${formatDamage(point.moraleDamage)} raw)`);
+    } else {
+      rows.push(`${componentLabel(component)} ${formatDamage(componentDamage(point, component))}`);
+    }
   }
   return rows;
 }
@@ -89,11 +95,13 @@ function tooltipHeight(point: DamageComponentCurvePoint): number {
   return tooltipRows(point).length * 13 + 8;
 }
 
-function componentLabel(component: DamageComponentKey): string {
+function componentLabel(component: DamageMetricKey): string {
   switch (component) {
     case "hp": return "HP";
     case "stun": return "Stun";
+    case "hp-stun": return "HP + Stun";
     case "morale": return "Morale";
+    case "scaledMorale": return "Morale";
     case "armor": return "Armor";
     case "preArmor": return "Pre Armor";
     case "tu": return "TU";
@@ -136,7 +144,7 @@ function rollYLabel(index: number): number {
   return Math.round((rollStats.value.maxDamage * (ticks - 1 - index)) / (ticks - 1));
 }
 
-const extraComponents: Array<Exclude<DamageComponentKey, "hp" | "stun">> = [
+const extraComponents: Array<Exclude<DamageMetricKey, "hp" | "stun" | "hp-stun">> = [
   "morale",
   "armor",
   "tu",
@@ -206,6 +214,19 @@ function clearPointer(): void {
           :y2="rollY(props.targetHp)"
         >
           <title>Target HP threshold: {{ props.targetHp }} damage</title>
+        </line>
+        <line
+          v-if="componentVisible('morale')"
+          class="morale-threshold-line"
+          x1="0"
+          x2="760"
+          :y1="rollY(100)"
+          :y2="rollY(100)"
+          stroke="#718096"
+          stroke-dasharray="4"
+          opacity="0.4"
+        >
+          <title>Max morale threshold: 100</title>
         </line>
         <path
           v-if="componentVisible('hp')"
