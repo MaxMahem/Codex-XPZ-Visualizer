@@ -131,6 +131,13 @@ const { scenario, scenarioTab } = storeToRefs(scenarioStore);
         </label>
         <label
           class="has-tip"
+          data-tip="Target bravery reduces morale damage: (110 - bravery) / 100."
+        >
+          Target Bravery
+          <input v-model.number="scenario.targetBravery" type="number" min="0" max="110" step="10" />
+        </label>
+        <label
+          class="has-tip"
           data-tip="Multiplies armor before damage is subtracted. Leave at 1 for normal armor behavior."
         >
           Armor effectiveness
