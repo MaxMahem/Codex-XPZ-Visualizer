@@ -32,7 +32,7 @@ export interface WeaponSystem {
   randomProfileIdOverride?: string;
 }
 
-export type DamageComponentKey = "hp" | "stun" | "morale" | "armor" | "tu" | "energy" | "mana";
+export type DamageComponentKey = "hp" | "stun" | "morale" | "armor" | "preArmor" | "tu" | "energy" | "mana";
 
 export interface DamageComponent {
   type: DamageComponentKey;   // discriminant
@@ -88,6 +88,7 @@ export interface DamageRollResult {
   stunDamage: number;
   moraleDamage: number;
   armorDamage: number;
+  preArmorDamage: number;
   tuDamage: number;
   energyDamage: number;
   manaDamage: number;
@@ -102,6 +103,12 @@ export interface DamageComponentCurvePoint {
   rollPercent: number;
   hpDamage: number;
   stunDamage: number;
+  moraleDamage: number;
+  armorDamage: number;
+  preArmorDamage: number;
+  tuDamage: number;
+  energyDamage: number;
+  manaDamage: number;
   totalDamage: number;
 }
 

@@ -26,6 +26,7 @@ export function useHeatmapModel() {
       stun: new Float32Array(width * height),
       morale: new Float32Array(width * height),
       armor: new Float32Array(width * height),
+      preArmor: new Float32Array(width * height),
       tu: new Float32Array(width * height),
       energy: new Float32Array(width * height),
       mana: new Float32Array(width * height),
@@ -37,6 +38,7 @@ export function useHeatmapModel() {
       "hp-stun": 1,
       morale: 1,
       armor: 1,
+      preArmor: 1,
       tu: 1,
       energy: 1,
       mana: 1,
@@ -68,14 +70,16 @@ export function useHeatmapModel() {
           : fixedArmorEffectiveness;
 
         for (const outcome of outcomes) {
+          const rolledPower = power * (outcome.rollPercent / 100);
           const postArmorDamage = Math.max(
             0,
-            power * (outcome.rollPercent / 100) - armor * armorEffectiveness,
+            rolledPower - armor * armorEffectiveness,
           );
           for (const setting of componentSettings) {
+            const componentBaseDamage = setting.key === "preArmor" ? rolledPower : postArmorDamage;
             values[setting.key][index] +=
               expectedComponentFromPostArmor(
-                postArmorDamage,
+                componentBaseDamage,
                 setting.percent,
                 setting.randomized,
               ) * outcome.probability;
@@ -213,7 +217,13 @@ export function useHeatmapModel() {
     metric: HeatmapMetric,
     index: number,
   ): number {
-    return metric === "hp-stun" ? hpStunValues[index] : values[metric][index];
+    if (metric === "hp-stun") {
+      return hpStunValues[index];
+    }
+    if (metric === "armor") {
+      return values.armor[index] + values.preArmor[index];
+    }
+    return values[metric][index];
   }
 
   function heatmapValueAt(index: number): number {

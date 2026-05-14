@@ -16,8 +16,17 @@ export function targetHpTooltip(hitPoints: number): string {
   return `The red dashed horizontal line marks the target's HP (${formatDamage(hitPoints)}). Curves above it have enough expected damage to exceed that HP at the shown armor level.`;
 }
 
-export function percentileTooltip(result: DamageComponentCurvePoint): string {
-  return `${formatDamage(result.totalDamage)} total by the ${Math.round(result.percentile)}th percentile. HP ${formatDamage(result.hpDamage)}, stun ${formatDamage(result.stunDamage)}. Underlying roll: ${result.rollPercent}%.`;
+export function percentileTooltip(
+  result: DamageComponentCurvePoint,
+  visibleComponents: DamageComponentKey[] = ["hp", "stun"],
+): string {
+  const visible = visibleComponents
+    .map((component) => `${componentLabel(component)} ${formatDamage(componentDamage(result, component))}`)
+    .join(", ");
+  const stack = visibleComponents.includes("hp") || visibleComponents.includes("stun")
+    ? `Stack ${formatDamage((visibleComponents.includes("hp") ? result.hpDamage : 0) + (visibleComponents.includes("stun") ? result.stunDamage : 0))}. `
+    : "";
+  return `${Math.round(result.percentile)}th percentile. ${stack}${visible}. Underlying roll: ${result.rollPercent}%.`;
 }
 
 export function weaponTooltip(
@@ -55,7 +64,6 @@ export function weaponTooltip(
     `${weapon.name}: ${damageType.name} damage.`,
     `Base ${formatDamage(weapon.basePower)}, current power ${formatDamage(modifiedPower(weapon, scenario))}.`,
     `Damage bonus: ${damageBonusTooltip(weapon)}.`,
-    `ToArmorPre ${formatPercent(weapon.armorPenetration)} (displayed only; not included in calculations yet).`,
     `AP ${formatPercent(armorEffectiveness)} from ArmorEffectiveness (${armorEffectivenessSource}).`,
     `Random profile ${profile.label} (${formatPercent(minRoll)}-${formatPercent(maxRoll)})${weapon.randomProfileIdOverride ? " (weapon override)" : ""}.`,
     components ? `Components: ${components}.` : "Components: none.",
@@ -104,4 +112,30 @@ function damageBonusTooltip(weapon: WeaponSystem): string {
       return `${label}: ${terms.length > 0 ? terms.join(" + ") : "0"}`;
     })
     .join("; ");
+}
+
+function componentDamage(result: DamageComponentCurvePoint, component: DamageComponentKey): number {
+  switch (component) {
+    case "hp": return result.hpDamage;
+    case "stun": return result.stunDamage;
+    case "morale": return result.moraleDamage;
+    case "armor": return result.armorDamage + result.preArmorDamage;
+    case "preArmor": return result.preArmorDamage;
+    case "tu": return result.tuDamage;
+    case "energy": return result.energyDamage;
+    case "mana": return result.manaDamage;
+  }
+}
+
+function componentLabel(component: DamageComponentKey): string {
+  switch (component) {
+    case "hp": return "HP";
+    case "stun": return "Stun";
+    case "morale": return "Morale";
+    case "armor": return "Armor";
+    case "preArmor": return "Pre Armor";
+    case "tu": return "TU";
+    case "energy": return "Energy";
+    case "mana": return "Mana";
+  }
 }

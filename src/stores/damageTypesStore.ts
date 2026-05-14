@@ -8,6 +8,7 @@ export const damageComponentOptions: Array<{ key: DamageComponentKey; label: str
   { key: "stun", label: "Stun" },
   { key: "morale", label: "Morale" },
   { key: "armor", label: "Armor" },
+  { key: "preArmor", label: "Pre Armor" },
   { key: "tu", label: "TU" },
   { key: "energy", label: "Energy" },
   { key: "mana", label: "Mana" },

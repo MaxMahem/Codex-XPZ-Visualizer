@@ -3,6 +3,7 @@ import {
   buildDamageComponentCurve,
   buildDamageRollResults,
   expectedDamage,
+  expectedDamageComponents,
 } from "../damage";
 import { randomProfiles } from "../data";
 import { useDamageTypesStore } from "../stores/damageTypesStore";
@@ -11,6 +12,7 @@ import { useScenarioStore } from "../stores/scenarioStore";
 import { useUiStore } from "../stores/uiStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
 import { useCurrentArmor } from "./useCurrentArmor";
+import type { DamageComponentCurvePoint, DamageComponentKey } from "../types";
 
 export function useRollDamageModel() {
   const scenarioStore = useScenarioStore();
@@ -58,6 +60,16 @@ export function useRollDamageModel() {
       randomProfiles,
     ),
   );
+  
+  const rollExpectedComponents = computed(() =>
+    expectedDamageComponents(
+      rollWeapon.value,
+      scenarioStore.scenario,
+      currentArmor.value,
+      damageTypesStore.editableDamageTypes,
+      randomProfiles,
+    ),
+  );
 
   const inspectedCurvePoint = computed(() => {
     const points = componentCurve.value;
@@ -74,7 +86,10 @@ export function useRollDamageModel() {
 
   const rollStats = computed(() => {
     const results = rollResults.value;
-    const damages = componentCurve.value.map((result) => result.totalDamage);
+    const damages = componentCurve.value.flatMap((result) => [
+      result.totalDamage,
+      ...uiStore.visibleRollComponents.map((component) => visibleComponentDamage(result, component)),
+    ]);
     const minDamage = Math.min(...damages, 0);
     const maxDamage = Math.max(...damages, scenarioStore.scenario.hitPoints, rollExpectedDamage.value, 10);
     const zeroChance = results
@@ -103,7 +118,21 @@ export function useRollDamageModel() {
     currentArmor,
     inspectedCurvePoint,
     rollExpectedDamage,
+    rollExpectedComponents,
     rollResults,
     rollStats,
   };
+}
+
+function visibleComponentDamage(result: DamageComponentCurvePoint, component: DamageComponentKey): number {
+  switch (component) {
+    case "hp": return result.hpDamage;
+    case "stun": return result.stunDamage;
+    case "morale": return result.moraleDamage;
+    case "armor": return result.armorDamage + result.preArmorDamage;
+    case "preArmor": return result.preArmorDamage;
+    case "tu": return result.tuDamage;
+    case "energy": return result.energyDamage;
+    case "mana": return result.manaDamage;
+  }
 }
