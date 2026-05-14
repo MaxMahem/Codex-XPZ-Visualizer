@@ -34,25 +34,18 @@ export interface WeaponSystem {
 
 export type DamageComponentKey = "hp" | "stun" | "morale" | "armor" | "tu" | "energy" | "mana";
 
+export interface DamageComponent {
+  type: DamageComponentKey;   // discriminant
+  percent: number;            // e.g. 0.5, 1.5, etc.
+  randomized?: boolean;       // optional flag
+}
+
 export interface DamageType {
   id: string;
   name: string;
   armorEffectiveness: number;
   armorEffectivenessScalesWithPower?: boolean;
-  hpDamagePercent: number;
-  hpDamageRandomized: boolean;
-  stunDamagePercent: number;
-  stunDamageRandomized: boolean;
-  moraleDamagePercent: number;
-  moraleDamageRandomized: boolean;
-  armorDamagePercent: number;
-  armorDamageRandomized: boolean;
-  tuDamagePercent: number;
-  tuDamageRandomized: boolean;
-  energyDamagePercent: number;
-  energyDamageRandomized: boolean;
-  manaDamagePercent: number;
-  manaDamageRandomized: boolean;
+  damageComponents: Record<DamageComponentKey, DamageComponent>;
   randomProfileId: string;
   color: string;
 }
@@ -69,6 +62,7 @@ export interface Scenario {
   mana: number;
   rank: number;
   hitPoints: number;
+  armor: number;
   armorEffectiveness: number;
   armorMin: number;
   armorMax: number;

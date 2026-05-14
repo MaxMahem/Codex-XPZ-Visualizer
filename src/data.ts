@@ -15,6 +15,7 @@ export const defaultScenario: Scenario = {
   mana: 0,
   rank: 0,
   hitPoints: 45,
+  armor: 40,
   armorEffectiveness: 1,
   armorMin: 0,
   armorMax: 100,
@@ -22,5 +23,5 @@ export const defaultScenario: Scenario = {
 };
 
 export const randomProfiles: RandomProfile[] = randomProfilesJson;
-export const damageTypes: DamageType[] = damageTypesJson;
+export const damageTypes: DamageType[] = damageTypesJson as DamageType[];
 

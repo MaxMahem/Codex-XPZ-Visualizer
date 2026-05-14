@@ -6,6 +6,7 @@ import type {
   DamagePoint,
   DamageRollResult,
   DamageType,
+  DamageComponent,
   DamageComponentKey,
   RandomProfile,
   Scenario,
@@ -50,23 +51,22 @@ const fallbackDamageType: DamageType = {
   name: "Default",
   armorEffectiveness: 1,
   armorEffectivenessScalesWithPower: false,
-  hpDamagePercent: 1,
-  hpDamageRandomized: false,
-  stunDamagePercent: 0,
-  stunDamageRandomized: false,
-  moraleDamagePercent: 0,
-  moraleDamageRandomized: false,
-  armorDamagePercent: 0,
-  armorDamageRandomized: false,
-  tuDamagePercent: 0,
-  tuDamageRandomized: false,
-  energyDamagePercent: 0,
-  energyDamageRandomized: false,
-  manaDamagePercent: 0,
-  manaDamageRandomized: false,
+  damageComponents: {
+    hp: { type: "hp", percent: 1, randomized: false },
+    stun: { type: "stun", percent: 0, randomized: false },
+    morale: { type: "morale", percent: 0, randomized: false },
+    armor: { type: "armor", percent: 0, randomized: false },
+    tu: { type: "tu", percent: 0, randomized: false },
+    energy: { type: "energy", percent: 0, randomized: false },
+    mana: { type: "mana", percent: 0, randomized: false },
+  },
   randomProfileId: "0-200",
   color: "#66736b1c",
 };
+
+export function getDamageComponent(damageType: DamageType, component: DamageComponentKey): DamageComponent {
+  return damageType.damageComponents[component];
+}
 
 const fallbackRandomProfile: RandomProfile = {
   id: "0-200",
@@ -203,8 +203,9 @@ export function expectedComponentDamage(
   randomProfiles: RandomProfile[] = [],
 ): number {
   const damageType = damageTypeFor(weapon, damageTypes);
-  const percent = weapon.damageModifierOverrides?.[component] ?? damageType[`${component}DamagePercent`] as number;
-  const randomized = weapon.damageRandomizedOverrides?.[component] ?? damageType[`${component}DamageRandomized`] as boolean;
+  const comp = getDamageComponent(damageType, component);
+  const percent = weapon.damageModifierOverrides?.[component] ?? comp.percent;
+  const randomized = weapon.damageRandomizedOverrides?.[component] ?? comp.randomized;
 
   return rollOutcomes(weapon, damageTypes, randomProfiles).reduce((sum, outcome) => {
     const postArmorDamage = damageAtRoll(
@@ -214,7 +215,7 @@ export function expectedComponentDamage(
       outcome.rollPercent / 100,
       damageTypes,
     );
-    return sum + expectedRawComponent(postArmorDamage, percent, randomized) * outcome.probability;
+    return sum + expectedRawComponent(postArmorDamage, percent, !!randomized) * outcome.probability;
   }, 0);
 }
 
@@ -251,7 +252,7 @@ export function averageRollDamage(
   return Math.max(
     0,
     Math.max(0, power * averageRoll - effectiveArmor(weapon, scenario, armor, damageTypes)) *
-      (weapon.damageModifierOverrides?.hp ?? damageType.hpDamagePercent),
+      (weapon.damageModifierOverrides?.hp ?? getDamageComponent(damageType, "hp").percent),
   );
 }
 
@@ -346,10 +347,12 @@ export function buildDamageComponentCurve(
 ): DamageComponentCurvePoint[] {
   let cumulative = 0;
   const damageType = damageTypeFor(weapon, damageTypes);
-  const hpPercent = weapon.damageModifierOverrides?.hp ?? damageType.hpDamagePercent;
-  const stunPercent = weapon.damageModifierOverrides?.stun ?? damageType.stunDamagePercent;
-  const hpRandomized = weapon.damageRandomizedOverrides?.hp ?? damageType.hpDamageRandomized;
-  const stunRandomized = weapon.damageRandomizedOverrides?.stun ?? damageType.stunDamageRandomized;
+  const hpComp = getDamageComponent(damageType, "hp");
+  const stunComp = getDamageComponent(damageType, "stun");
+  const hpPercent = weapon.damageModifierOverrides?.hp ?? hpComp.percent;
+  const stunPercent = weapon.damageModifierOverrides?.stun ?? stunComp.percent;
+  const hpRandomized = weapon.damageRandomizedOverrides?.hp ?? hpComp.randomized;
+  const stunRandomized = weapon.damageRandomizedOverrides?.stun ?? stunComp.randomized;
 
   return rollOutcomes(weapon, damageTypes, randomProfiles).map((outcome) => {
     cumulative += outcome.probability;
@@ -360,8 +363,8 @@ export function buildDamageComponentCurve(
       outcome.rollPercent / 100,
       damageTypes,
     );
-    const hpDamage = expectedIntegerComponent(postArmorDamage, hpPercent, hpRandomized);
-    const stunDamage = expectedIntegerComponent(postArmorDamage, stunPercent, stunRandomized);
+    const hpDamage = expectedIntegerComponent(postArmorDamage, hpPercent, !!hpRandomized);
+    const stunDamage = expectedIntegerComponent(postArmorDamage, stunPercent, !!stunRandomized);
 
     return {
       percentile: cumulative * 100,
@@ -409,20 +412,33 @@ export function buildDamageRollResults(
 ): DamageRollResult[] {
   const results: DamageRollResult[] = [];
   const damageType = damageTypeFor(weapon, damageTypes);
-  const hpPercent = weapon.damageModifierOverrides?.hp ?? damageType.hpDamagePercent;
-  const stunPercent = weapon.damageModifierOverrides?.stun ?? damageType.stunDamagePercent;
-  const moralePercent = weapon.damageModifierOverrides?.morale ?? damageType.moraleDamagePercent;
-  const armorPercent = weapon.damageModifierOverrides?.armor ?? damageType.armorDamagePercent;
-  const tuPercent = weapon.damageModifierOverrides?.tu ?? damageType.tuDamagePercent;
-  const energyPercent = weapon.damageModifierOverrides?.energy ?? damageType.energyDamagePercent;
-  const hpRolls = componentRollOutcomes(weapon.damageRandomizedOverrides?.hp ?? damageType.hpDamageRandomized);
-  const stunRolls = componentRollOutcomes(weapon.damageRandomizedOverrides?.stun ?? damageType.stunDamageRandomized);
-  const moraleRandomized = weapon.damageRandomizedOverrides?.morale ?? damageType.moraleDamageRandomized;
-  const armorRandomized = weapon.damageRandomizedOverrides?.armor ?? damageType.armorDamageRandomized;
-  const tuRandomized = weapon.damageRandomizedOverrides?.tu ?? damageType.tuDamageRandomized;
-  const energyRandomized = weapon.damageRandomizedOverrides?.energy ?? damageType.energyDamageRandomized;
-  const manaPercent = weapon.damageModifierOverrides?.mana ?? damageType.manaDamagePercent;
-  const manaRandomized = weapon.damageRandomizedOverrides?.mana ?? damageType.manaDamageRandomized;
+  
+  const hpComp = getDamageComponent(damageType, "hp");
+  const stunComp = getDamageComponent(damageType, "stun");
+  const moraleComp = getDamageComponent(damageType, "morale");
+  const armorComp = getDamageComponent(damageType, "armor");
+  const tuComp = getDamageComponent(damageType, "tu");
+  const energyComp = getDamageComponent(damageType, "energy");
+  const manaComp = getDamageComponent(damageType, "mana");
+
+  const hpPercent = weapon.damageModifierOverrides?.hp ?? hpComp.percent;
+  const stunPercent = weapon.damageModifierOverrides?.stun ?? stunComp.percent;
+  const moralePercent = weapon.damageModifierOverrides?.morale ?? moraleComp.percent;
+  const armorPercent = weapon.damageModifierOverrides?.armor ?? armorComp.percent;
+  const tuPercent = weapon.damageModifierOverrides?.tu ?? tuComp.percent;
+  const energyPercent = weapon.damageModifierOverrides?.energy ?? energyComp.percent;
+  const manaPercent = weapon.damageModifierOverrides?.mana ?? manaComp.percent;
+
+  const hpRandomized = weapon.damageRandomizedOverrides?.hp ?? hpComp.randomized;
+  const stunRandomized = weapon.damageRandomizedOverrides?.stun ?? stunComp.randomized;
+  const moraleRandomized = weapon.damageRandomizedOverrides?.morale ?? moraleComp.randomized;
+  const armorRandomized = weapon.damageRandomizedOverrides?.armor ?? armorComp.randomized;
+  const tuRandomized = weapon.damageRandomizedOverrides?.tu ?? tuComp.randomized;
+  const energyRandomized = weapon.damageRandomizedOverrides?.energy ?? energyComp.randomized;
+  const manaRandomized = weapon.damageRandomizedOverrides?.mana ?? manaComp.randomized;
+
+  const hpRolls = componentRollOutcomes(!!hpRandomized);
+  const stunRolls = componentRollOutcomes(!!stunRandomized);
 
   for (const outcome of rollOutcomes(weapon, damageTypes, randomProfiles)) {
     const postArmorDamage = damageAtRoll(
@@ -437,11 +453,11 @@ export function buildDamageRollResults(
       for (const stunRoll of stunRolls) {
         const hpDamage = Math.floor(postArmorDamage * hpPercent * hpRoll.multiplier);
         const stunDamage = Math.floor(postArmorDamage * stunPercent * stunRoll.multiplier);
-        const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, moraleRandomized);
-        const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, armorRandomized);
-        const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, tuRandomized);
-        const energyDamage = expectedIntegerComponent(postArmorDamage, energyPercent, energyRandomized);
-        const manaDamage = expectedIntegerComponent(postArmorDamage, manaPercent, manaRandomized);
+        const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, !!moraleRandomized);
+        const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, !!armorRandomized);
+        const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, !!tuRandomized);
+        const energyDamage = expectedIntegerComponent(postArmorDamage, energyPercent, !!energyRandomized);
+        const manaDamage = expectedIntegerComponent(postArmorDamage, manaPercent, !!manaRandomized);
         results.push({
           rollPercent: outcome.rollPercent,
           hpDamage,

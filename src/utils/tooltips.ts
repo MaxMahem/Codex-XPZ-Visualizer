@@ -2,6 +2,7 @@ import {
   armorEffectivenessModifier,
   damageTypeFor,
   DAMAGE_BONUS_STATS,
+  getDamageComponent,
   modifiedPower,
   randomProfileFor,
   randomRange,
@@ -66,7 +67,7 @@ function componentPercentFor(
   damageType: DamageType,
   component: DamageComponentKey,
 ): number {
-  return weapon.damageModifierOverrides?.[component] ?? damageType[`${component}DamagePercent`];
+  return weapon.damageModifierOverrides?.[component] ?? getDamageComponent(damageType, component).percent;
 }
 
 function componentRandomizedFor(
@@ -74,7 +75,7 @@ function componentRandomizedFor(
   damageType: DamageType,
   component: DamageComponentKey,
 ): boolean {
-  return weapon.damageRandomizedOverrides?.[component] ?? damageType[`${component}DamageRandomized`];
+  return weapon.damageRandomizedOverrides?.[component] ?? !!getDamageComponent(damageType, component).randomized;
 }
 
 function componentSource(weapon: WeaponSystem, component: DamageComponentKey): string {

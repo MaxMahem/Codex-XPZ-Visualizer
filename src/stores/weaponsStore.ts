@@ -30,33 +30,9 @@ export const useWeaponsStore = defineStore('weapons', () => {
   };
 
   const editableWeapons = reactive<WeaponSystem[]>(shippedWeapons.map((weapon) => ({ ...weapon })));
-  const selectedIds = ref<string[]>(shippedWeapons.slice(0, 3).map((weapon) => weapon.id));
-  const selectedWeaponId = ref(shippedWeapons[0]?.id ?? "");
-  const rollWeaponId = ref(shippedWeapons[0]?.id ?? "");
   const importStatus = ref("");
 
-  const selectedWeapons = computed(() =>
-    editableWeapons.filter((weapon) => selectedIds.value.includes(weapon.id)),
-  );
-
-  const rollWeapon = computed(
-    () => editableWeapons.find((weapon) => weapon.id === selectedWeaponId.value) ?? editableWeapons[0] ?? fallbackWeapon,
-  );
-
-  function toggleWeapon(id: string): void {
-    if (selectedIds.value.includes(id)) {
-      selectedIds.value = selectedIds.value.filter((selected) => selected !== id);
-      return;
-    }
-    selectedIds.value = [...selectedIds.value, id];
-  }
-
-  function selectWeapon(id: string): void {
-    selectedWeaponId.value = id;
-    rollWeaponId.value = id;
-  }
-
-  function addWeapon(): void {
+  function addWeapon(): string {
     const nextNumber = editableWeapons.length + 1;
     const id = `custom-weapon-${Date.now()}`;
     const damageTypeId = damageTypesStore.editableDamageTypes[0]?.id ?? "0-none";
@@ -70,16 +46,11 @@ export const useWeaponsStore = defineStore('weapons', () => {
       damageBonus: [],
       color: "#6f7f90",
     });
-    selectedWeaponId.value = id;
-    rollWeaponId.value = id;
-    selectedIds.value = [...selectedIds.value, id];
+    return id;
   }
 
   function clearWeapons(): void {
     editableWeapons.splice(0, editableWeapons.length);
-    selectedIds.value = [];
-    selectedWeaponId.value = "";
-    rollWeaponId.value = "";
     importStatus.value = "Cleared all weapons/items. Damage type defaults are still available.";
   }
 
@@ -106,11 +77,11 @@ export const useWeaponsStore = defineStore('weapons', () => {
     weapon.damageBonus[index].coefficients[degree] = Number.isFinite(value) ? value : 0;
   }
 
-  async function importItemsFile(event: Event): Promise<void> {
+  async function importItemsFile(event: Event): Promise<WeaponSystem[]> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) {
-      return;
+      return [];
     }
 
     const text = await file.text();
@@ -120,13 +91,9 @@ export const useWeaponsStore = defineStore('weapons', () => {
     );
 
     editableWeapons.push(...imported.weapons);
-    selectedIds.value = [...new Set([...selectedIds.value, ...imported.weapons.map((weapon) => weapon.id)])];
-    if (imported.weapons[0]) {
-      selectedWeaponId.value = imported.weapons[0].id;
-      rollWeaponId.value = imported.weapons[0].id;
-    }
     importStatus.value = `Imported ${imported.weapons.length} powered items.`;
     input.value = "";
+    return imported.weapons;
   }
 
   function setWeaponArmorPenetration(weapon: WeaponSystem, value: number): void {
@@ -180,14 +147,7 @@ export const useWeaponsStore = defineStore('weapons', () => {
     shippedWeapons,
     fallbackWeapon,
     editableWeapons,
-    selectedIds,
-    selectedWeaponId,
-    rollWeaponId,
     importStatus,
-    selectedWeapons,
-    rollWeapon,
-    toggleWeapon,
-    selectWeapon,
     addWeapon,
     clearWeapons,
     setWeaponModifiedPower,

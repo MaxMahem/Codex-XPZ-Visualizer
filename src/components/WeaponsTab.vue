@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { storeToRefs } from "pinia";
+import { useComparisonStore } from "../stores/comparisonStore";
+import { useInspectorStore } from "../stores/inspectorStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
 import { useDamageTypesStore, damageComponentOptions } from "../stores/damageTypesStore";
 import { randomProfiles } from "../data";
-import { modifiedPower, damageTypeFor, computeDamageBonus, DAMAGE_BONUS_STATS } from "../damage";
+import { modifiedPower, damageTypeFor, computeDamageBonus, DAMAGE_BONUS_STATS, getDamageComponent } from "../damage";
 import type { WeaponSystem, DamageComponentKey } from "../types";
 import { formatDamage } from "../utils/formatters";
 import ColorPicker from "./ColorPicker.vue";
@@ -14,13 +16,15 @@ import PercentInput from "./PercentInput.vue";
 const scenarioStore = useScenarioStore();
 const weaponsStore = useWeaponsStore();
 const damageTypesStore = useDamageTypesStore();
+const inspectorStore = useInspectorStore();
+const comparisonStore = useComparisonStore();
 
 const {
   importStatus,
   editableWeapons,
-  selectedWeaponId,
-  selectedIds,
 } = storeToRefs(weaponsStore);
+
+const { focusedId } = storeToRefs(inspectorStore);
 
 const {
   editableDamageTypes,
@@ -36,11 +40,36 @@ function toggleWeaponDetails(id: string) {
   expandedWeapons.value[id] = !expandedWeapons.value[id];
 }
 
+async function handleImport(event: Event) {
+  const imported = await weaponsStore.importItemsFile(event);
+  if (imported.length > 0) {
+    inspectorStore.setFocus(imported[0].id);
+    // Auto-select imported weapons for comparison too
+    for (const w of imported) {
+      if (!comparisonStore.selectedIds.includes(w.id)) {
+        comparisonStore.toggleWeapon(w.id);
+      }
+    }
+  }
+}
+
+function handleAddWeapon() {
+  const id = weaponsStore.addWeapon();
+  inspectorStore.setFocus(id);
+  comparisonStore.toggleWeapon(id);
+}
+
+function handleClearWeapons() {
+  weaponsStore.clearWeapons();
+  inspectorStore.setFocus("");
+  comparisonStore.clear();
+}
+
 function effectivePercent(weapon: WeaponSystem, key: DamageComponentKey): number {
   const override = weapon.damageModifierOverrides?.[key];
   if (override !== undefined) return override;
   const dt = damageTypeFor(weapon, editableDamageTypes.value);
-  return (dt as any)[`${key}DamagePercent`];
+  return getDamageComponent(dt, key).percent;
 }
 
 function hasPercentOverride(weapon: WeaponSystem, key: DamageComponentKey): boolean {
@@ -51,7 +80,7 @@ function effectiveRandomized(weapon: WeaponSystem, key: DamageComponentKey): boo
   const override = weapon.damageRandomizedOverrides?.[key];
   if (override !== undefined) return override;
   const dt = damageTypeFor(weapon, editableDamageTypes.value);
-  return (dt as any)[`${key}DamageRandomized`];
+  return !!getDamageComponent(dt, key).randomized;
 }
 
 function hasRandomizedOverride(weapon: WeaponSystem, key: DamageComponentKey): boolean {
@@ -96,13 +125,13 @@ function bonusPreview(weapon: WeaponSystem): string {
           data-tip="Import powered OpenXcom item or ammo entries from a .rul YAML file."
         >
           Import Items
-          <input type="file" accept=".rul,.yml,.yaml,text/yaml,text/plain" @change="weaponsStore.importItemsFile" />
+          <input type="file" accept=".rul,.yml,.yaml,text/yaml,text/plain" @change="handleImport" />
         </label>
         <button
           class="add-button has-tip"
           type="button"
           data-tip="Remove all current weapon and ammo rows. Damage types are kept."
-          @click="weaponsStore.clearWeapons"
+          @click="handleClearWeapons"
         >
           Clear Weapons
         </button>
@@ -127,15 +156,15 @@ function bonusPreview(weapon: WeaponSystem): string {
         <template v-for="weapon in editableWeapons" :key="weapon.id">
           <div
           class="weapon-edit-row"
-          :class="{ active: selectedWeaponId === weapon.id }"
+          :class="{ active: focusedId === weapon.id }"
           role="row"
-          :aria-selected="selectedWeaponId === weapon.id"
+          :aria-selected="focusedId === weapon.id"
           tabindex="0"
-          @pointerdown="weaponsStore.selectWeapon(weapon.id)"
-          @click="weaponsStore.selectWeapon(weapon.id)"
-          @focusin.capture="weaponsStore.selectWeapon(weapon.id)"
-          @keydown.enter.prevent="weaponsStore.selectWeapon(weapon.id)"
-          @keydown.space.prevent="weaponsStore.selectWeapon(weapon.id)"
+          @pointerdown="inspectorStore.setFocus(weapon.id)"
+          @click="inspectorStore.setFocus(weapon.id)"
+          @focusin.capture="inspectorStore.setFocus(weapon.id)"
+          @keydown.enter.prevent="inspectorStore.setFocus(weapon.id)"
+          @keydown.space.prevent="inspectorStore.setFocus(weapon.id)"
         >
           <span role="cell">
             <ColorPicker
@@ -325,7 +354,7 @@ function bonusPreview(weapon: WeaponSystem): string {
           </div>
         </div>
       </template>
-      <button class="weapon-add-row has-tip" type="button" data-tip="Create a new editable weapon row." @click="weaponsStore.addWeapon">
+      <button class="weapon-add-row has-tip" type="button" data-tip="Create a new editable weapon row." @click="handleAddWeapon">
           Add Weapon
         </button>
       </div>

@@ -2,15 +2,12 @@
 import { storeToRefs } from "pinia";
 import { useCurrentArmor } from "../composables/useCurrentArmor";
 import { useScenarioStore } from "../stores/scenarioStore";
-import { useUiStore } from "../stores/uiStore";
 import { formatDamage } from "../utils/formatters";
 
 const scenarioStore = useScenarioStore();
-const uiStore = useUiStore();
 const { currentArmor } = useCurrentArmor();
 
 const { scenario, scenarioTab } = storeToRefs(scenarioStore);
-const { hoveredArmor } = storeToRefs(uiStore);
 </script>
 
 <template>
@@ -130,7 +127,7 @@ const { hoveredArmor } = storeToRefs(uiStore);
           data-tip="Armor value used by the vertical inspection line and comparison table."
         >
           Armor
-          <input v-model.number="hoveredArmor" type="number" min="0" max="400" />
+          <input v-model.number="scenario.armor" type="number" min="0" max="400" />
         </label>
         <label
           class="has-tip"

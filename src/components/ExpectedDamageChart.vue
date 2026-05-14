@@ -1,24 +1,21 @@
 <script setup lang="ts">
+import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useVsArmorModel } from "../composables/useVsArmorModel";
 import { useDamageTypesStore } from "../stores/damageTypesStore";
 import { useScenarioStore } from "../stores/scenarioStore";
-import { useWeaponsStore } from "../stores/weaponsStore";
-import { useUiStore } from "../stores/uiStore";
 import { formatDamage } from "../utils/formatters";
 import { weaponTooltip } from "../utils/tooltips";
-import type { DamagePoint, WeaponSystem } from "../types";
+import type { DamagePoint } from "../types";
 
 const damageTypesStore = useDamageTypesStore();
 const scenarioStore = useScenarioStore();
-const weaponsStore = useWeaponsStore();
-const uiStore = useUiStore();
-const { chartSeries, maxExpectedDamage, weaponAtArmor } = useVsArmorModel();
+const { selectedWeapons, chartSeries, maxExpectedDamage, weaponAtArmor } = useVsArmorModel();
 
-const { hoveredArmor } = storeToRefs(uiStore);
-const { selectedWeapons } = storeToRefs(weaponsStore);
 const { editableDamageTypes } = storeToRefs(damageTypesStore);
 const { scenario } = storeToRefs(scenarioStore);
+
+const hoveredArmor = ref<number | null>(null);
 
 const props = defineProps<{
   targetHp: number;
@@ -66,6 +63,11 @@ function handlePointer(event: PointerEvent): void {
   const x = Math.min(plotWidth, Math.max(0, event.clientX - rect.left - plotLeft));
   hoveredArmor.value = (x / plotWidth) * 100;
 }
+
+function clearPointer(): void {
+  hoveredArmor.value = null;
+}
+
 </script>
 
 <template>
@@ -75,6 +77,7 @@ function handlePointer(event: PointerEvent): void {
       role="img" 
       aria-label="Expected damage by armor level"
       @pointermove="handlePointer"
+      @pointerleave="clearPointer"
     >
       <g transform="translate(58 22)">
         <line
@@ -109,13 +112,26 @@ function handlePointer(event: PointerEvent): void {
           <title>{{ props.targetHpTooltip }}</title>
         </line>
         <line
+          class="target-line"
+          :x1="scaleX(scenario.armor)"
+          :x2="scaleX(scenario.armor)"
+          y1="0"
+          y2="320"
+          stroke="#4a5568"
+          stroke-dasharray="4"
+          opacity="0.6"
+        >
+          <title>Target armor: {{ Math.round(scenario.armor) }}</title>
+        </line>
+        <line
+          v-if="hoveredArmor !== null"
           class="inspect-line"
-          :x1="scaleX(hoveredArmor ?? 0)"
-          :x2="scaleX(hoveredArmor ?? 0)"
+          :x1="scaleX(hoveredArmor)"
+          :x2="scaleX(hoveredArmor)"
           y1="0"
           y2="320"
         >
-          <title>Inspected armor: {{ Math.round(hoveredArmor ?? 0) }}</title>
+          <title>Inspected armor: {{ Math.round(hoveredArmor) }}</title>
         </line>
         <path
           v-for="series in chartSeries"
@@ -130,13 +146,13 @@ function handlePointer(event: PointerEvent): void {
           v-for="weapon in selectedWeapons"
           :key="`${weapon.id}-dot`"
           r="4"
-          :cx="scaleX(hoveredArmor ?? 0)"
-          :cy="scaleY(Math.round(weaponAtArmor(weapon, hoveredArmor ?? 0).expected))"
+          :cx="scaleX(hoveredArmor ?? scenario.armor)"
+          :cy="scaleY(Math.round(weaponAtArmor(weapon, hoveredArmor ?? scenario.armor).expected))"
           :fill="weapon.color"
         >
           <title>
-            {{ weapon.name }} at armor {{ Math.round(hoveredArmor ?? 0) }}:
-            {{ formatDamage(weaponAtArmor(weapon, hoveredArmor ?? 0).expected) }} expected damage
+            {{ weapon.name }} at armor {{ Math.round(hoveredArmor ?? scenario.armor) }}:
+            {{ formatDamage(weaponAtArmor(weapon, hoveredArmor ?? scenario.armor).expected) }} expected damage
           </title>
         </circle>
         <text

@@ -1,17 +1,14 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { useRollDamageModel } from "../composables/useRollDamageModel";
-import { useWeaponsStore } from "../stores/weaponsStore";
 import { useUiStore } from "../stores/uiStore";
 import { formatDamage } from "../utils/formatters";
 import { percentileTooltip } from "../utils/tooltips";
 import type { DamageComponentCurvePoint } from "../types";
 
-const weaponsStore = useWeaponsStore();
 const uiStore = useUiStore();
-const { rollStats, componentCurve, inspectedCurvePoint } = useRollDamageModel();
+const { rollWeapon, rollStats, componentCurve, inspectedCurvePoint } = useRollDamageModel();
 
-const { rollWeapon } = storeToRefs(weaponsStore);
 const { rollHoverPercentile } = storeToRefs(uiStore);
 
 const props = defineProps<{

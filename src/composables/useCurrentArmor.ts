@@ -1,10 +1,10 @@
 import { computed } from "vue";
-import { useUiStore } from "../stores/uiStore";
+import { useScenarioStore } from "../stores/scenarioStore";
 
 export function useCurrentArmor() {
-  const uiStore = useUiStore();
+  const scenarioStore = useScenarioStore();
 
-  const currentArmor = computed(() => Math.round(uiStore.hoveredArmor ?? 40));
+  const currentArmor = computed(() => Math.round(scenarioStore.scenario.armor));
 
   return {
     currentArmor,

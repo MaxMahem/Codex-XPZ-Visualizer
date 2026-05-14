@@ -8,6 +8,7 @@ import {
   modifiedPower,
 } from "../damage";
 import { randomProfiles } from "../data";
+import { useComparisonStore } from "../stores/comparisonStore";
 import { useDamageTypesStore } from "../stores/damageTypesStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
@@ -18,10 +19,17 @@ export function useVsArmorModel() {
   const scenarioStore = useScenarioStore();
   const damageTypesStore = useDamageTypesStore();
   const weaponsStore = useWeaponsStore();
+  const comparisonStore = useComparisonStore();
   const { currentArmor } = useCurrentArmor();
 
+  const selectedWeapons = computed(() =>
+    weaponsStore.editableWeapons.filter((weapon) =>
+      comparisonStore.selectedIds.includes(weapon.id),
+    ),
+  );
+
   const chartSeries = computed(() =>
-    weaponsStore.selectedWeapons.map((weapon) => ({
+    selectedWeapons.value.map((weapon) => ({
       weapon,
       points: buildCurve(
         weapon,
@@ -40,7 +48,7 @@ export function useVsArmorModel() {
   });
 
   const focusedRows = computed(() =>
-    weaponsStore.selectedWeapons
+    selectedWeapons.value
       .map((weapon) => ({
         weapon,
         point: weaponAtArmor(weapon, currentArmor.value),
@@ -83,6 +91,7 @@ export function useVsArmorModel() {
   }
 
   return {
+    selectedWeapons,
     chartSeries,
     currentArmor,
     focusedRows,

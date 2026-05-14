@@ -1,6 +1,10 @@
 <script setup lang="ts">
+import { onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import { useUiStore } from "./stores/uiStore";
+import { useWeaponsStore } from "./stores/weaponsStore";
+import { useComparisonStore } from "./stores/comparisonStore";
+import { useInspectorStore } from "./stores/inspectorStore";
 
 import ScenarioControls from "./components/ScenarioControls.vue";
 import CompareTab from "./components/CompareTab.vue";
@@ -10,7 +14,21 @@ import DamageTypesTab from "./components/DamageTypesTab.vue";
 import WeaponsTab from "./components/WeaponsTab.vue";
 
 const uiStore = useUiStore();
+const weaponsStore = useWeaponsStore();
+const comparisonStore = useComparisonStore();
+const inspectorStore = useInspectorStore();
+
 const { activeTab } = storeToRefs(uiStore);
+
+onMounted(() => {
+  // Initialize default UI state from weapons data
+  if (comparisonStore.selectedIds.length === 0) {
+    comparisonStore.selectedIds = weaponsStore.shippedWeapons.slice(0, 3).map(w => w.id);
+  }
+  if (!inspectorStore.focusedId) {
+    inspectorStore.focusedId = weaponsStore.shippedWeapons[0]?.id ?? "";
+  }
+});
 </script>
 
 <template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+import { useComparisonStore } from "../stores/comparisonStore";
 import { useDamageTypesStore } from "../stores/damageTypesStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
@@ -8,7 +9,10 @@ import { weaponTooltip } from "../utils/tooltips";
 const damageTypesStore = useDamageTypesStore();
 const scenarioStore = useScenarioStore();
 const weaponsStore = useWeaponsStore();
-const { editableWeapons, selectedIds } = storeToRefs(weaponsStore);
+const comparisonStore = useComparisonStore();
+
+const { editableWeapons } = storeToRefs(weaponsStore);
+const { selectedIds } = storeToRefs(comparisonStore);
 const { editableDamageTypes } = storeToRefs(damageTypesStore);
 const { scenario } = storeToRefs(scenarioStore);
 </script>
@@ -31,7 +35,7 @@ const { scenario } = storeToRefs(scenarioStore);
         type="button"
         :title="weaponTooltip(weapon, scenario, editableDamageTypes)"
         :data-tip="weaponTooltip(weapon, scenario, editableDamageTypes)"
-        @click="weaponsStore.toggleWeapon(weapon.id)"
+        @click="comparisonStore.toggleWeapon(weapon.id)"
       >
         <span class="swatch" :style="{ backgroundColor: weapon.color }"></span>
         <span>

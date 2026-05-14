@@ -18,14 +18,12 @@ export const heatmapMetrics: Array<{ key: HeatmapMetric; label: string }> = [
 
 export const useUiStore = defineStore('ui', () => {
   const activeTab = ref<AppTab>("compare");
-  const hoveredArmor = ref<number | null>(40);
   const rollHoverPercentile = ref<number | null>(null);
   const heatmapHover = ref<{ armor: number; power: number } | null>(null);
   const heatmapMetric = ref<HeatmapMetric>("hp");
 
   return {
     activeTab,
-    hoveredArmor,
     rollHoverPercentile,
     heatmapHover,
     heatmapMetric,

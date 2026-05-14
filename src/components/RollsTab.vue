@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+import { useInspectorStore } from "../stores/inspectorStore";
 import { useRollDamageModel } from "../composables/useRollDamageModel";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
@@ -12,10 +13,12 @@ defineProps<{
 
 const scenarioStore = useScenarioStore();
 const weaponsStore = useWeaponsStore();
-const { currentArmor, rollStats } = useRollDamageModel();
+const inspectorStore = useInspectorStore();
+const { currentArmor, rollStats, rollWeapon } = useRollDamageModel();
 
 const { scenario } = storeToRefs(scenarioStore);
-const { editableWeapons, selectedWeaponId, rollWeapon } = storeToRefs(weaponsStore);
+const { editableWeapons } = storeToRefs(weaponsStore);
+const { focusedId } = storeToRefs(inspectorStore);
 </script>
 
 <template>
@@ -40,8 +43,8 @@ const { editableWeapons, selectedWeaponId, rollWeapon } = storeToRefs(weaponsSto
       >
         Weapon
         <select
-          v-model="selectedWeaponId"
-          @change="weaponsStore.selectWeapon(($event.target as HTMLSelectElement).value)"
+          v-model="focusedId"
+          @change="inspectorStore.setFocus(($event.target as HTMLSelectElement).value)"
         >
           <option v-for="weapon in editableWeapons" :key="weapon.id" :value="weapon.id">
             {{ weapon.name }}

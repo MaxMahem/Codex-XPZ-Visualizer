@@ -22,8 +22,10 @@ const {
 
 const {
   editableDamageTypes,
+  customDamageTypes,
   selectedDamageTypeId,
   selectedDamageType,
+  isCustomSelected,
 } = storeToRefs(damageTypesStore);
 
 const {
@@ -65,6 +67,15 @@ const {
         >
           Add Damage Type
         </button>
+        <button
+          v-if="isCustomSelected"
+          class="remove-button has-tip"
+          type="button"
+          data-tip="Remove this custom damage type."
+          @click="damageTypesStore.removeDamageType(selectedDamageType.id)"
+        >
+          Remove
+        </button>
       </div>
     </div>
 
@@ -75,7 +86,10 @@ const {
           :style="{ backgroundColor: selectedDamageType.color }"
         ></span>
         <div>
-          <h3>{{ selectedDamageType.name }}</h3>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h3>{{ selectedDamageType.name }}</h3>
+            <span v-if="!isCustomSelected" class="locked-badge" title="Default damage types cannot be modified">Locked</span>
+          </div>
           <p>
             {{ randomProfileFor({ damageTypeId: selectedDamageType.id } as WeaponSystem, editableDamageTypes, randomProfiles).label }}
             random profile
@@ -89,7 +103,7 @@ const {
           data-tip="Display name for this damage type."
         >
           Name
-          <input v-model="selectedDamageType.name" type="text" />
+          <input v-model="selectedDamageType.name" type="text" :disabled="!isCustomSelected" />
         </label>
         <label
           class="has-tip"
@@ -98,15 +112,16 @@ const {
           Armor Effectiveness %
           <PercentInput
             :modelValue="selectedDamageType.armorEffectiveness"
-            :disabled="selectedDamageType.armorEffectivenessScalesWithPower"
+            :disabled="!isCustomSelected || selectedDamageType.armorEffectivenessScalesWithPower"
             @update:modelValue="damageTypesStore.setArmorEffectiveness($event ?? 0)"
           />
         </label>
         <label
           class="checkbox-label has-tip"
+          :class="{ disabled: !isCustomSelected }"
           data-tip="When enabled, the damage type default armor effectiveness is 100% plus weapon power as a percent. Power 40 becomes 140% armor effectiveness."
         >
-          <input v-model="selectedDamageType.armorEffectivenessScalesWithPower" type="checkbox" />
+          <input v-model="selectedDamageType.armorEffectivenessScalesWithPower" type="checkbox" :disabled="!isCustomSelected" />
           <span>Armor % = 100% + Power%</span>
         </label>
         <label
@@ -114,7 +129,7 @@ const {
           data-tip="Default random roll profile for this damage type. The 2 dice option weights middle rolls more heavily."
         >
           Random Type
-          <select v-model="selectedDamageType.randomProfileId">
+          <select v-model="selectedDamageType.randomProfileId" :disabled="!isCustomSelected">
             <option v-for="profile in randomProfiles" :key="profile.id" :value="profile.id">
               {{ profile.label }}
             </option>
@@ -128,7 +143,7 @@ const {
           >
             Color
           </span>
-          <ColorPicker v-model="selectedDamageType.color" title="Damage type color" />
+          <ColorPicker v-model="selectedDamageType.color" title="Damage type color" :disabled="!isCustomSelected" />
         </div>
       </div>
       <div class="component-list" aria-label="Damage components">
@@ -146,12 +161,14 @@ const {
           <PercentInput
             :ariaLabel="`${component.label} damage percent`"
             :modelValue="damageTypesStore.componentPercent(selectedDamageType, component.key)"
+            :disabled="!isCustomSelected"
             @update:modelValue="damageTypesStore.setComponentPercent(component.key, $event ?? 0)"
           />
-          <label class="checkbox-label compact-checkbox">
+          <label class="checkbox-label compact-checkbox" :class="{ disabled: !isCustomSelected }">
             <input
               :checked="damageTypesStore.componentRandomized(selectedDamageType, component.key)"
               type="checkbox"
+              :disabled="!isCustomSelected"
               @change="damageTypesStore.setComponentRandomized(component.key, ($event.target as HTMLInputElement).checked)"
             />
             <span>Roll</span>
@@ -195,10 +212,14 @@ const {
         v-for="damageType in editableDamageTypes"
         :key="damageType.id"
         class="damage-type-card"
-        :class="{ active: selectedDamageTypeId === damageType.id }"
+        :class="{ 
+          active: selectedDamageTypeId === damageType.id, 
+          'is-default': !customDamageTypes.some(ct => ct.id === damageType.id) 
+        }"
         :style="{ backgroundColor: subtleColor(damageType.color) }"
         @click="selectedDamageTypeId = damageType.id"
       >
+        <div v-if="!customDamageTypes.some(ct => ct.id === damageType.id)" class="card-lock-icon" title="Default damage type">🔒</div>
         <h3>{{ damageType.name }}</h3>
         <dl>
           <div>
@@ -211,19 +232,11 @@ const {
               }}
             </dd>
           </div>
-          <div>
-            <dt>HP</dt>
-            <dd>{{ percentField(damageType.hpDamagePercent) }}%{{ damageType.hpDamageRandomized ? " rng" : "" }}</dd>
-          </div>
-          <div>
-            <dt>Stun</dt>
-            <dd>{{ percentField(damageType.stunDamagePercent) }}%{{ damageType.stunDamageRandomized ? " rng" : "" }}</dd>
-          </div>
-          <div v-for="component in damageComponentOptions.slice(2)" :key="component.key">
-            <dt>{{ component.label }}</dt>
+          <div v-for="comp in Object.values(damageType.damageComponents)" :key="comp.type">
+            <dt>{{ damageComponentOptions.find(o => o.key === comp.type)?.label ?? comp.type }}</dt>
             <dd>
-              {{ percentField(damageTypesStore.componentPercent(damageType, component.key)) }}%{{
-                damageTypesStore.componentRandomized(damageType, component.key) ? " rng" : ""
+              {{ percentField(comp.percent) }}%{{
+                comp.randomized ? " rng" : ""
               }}
             </dd>
           </div>

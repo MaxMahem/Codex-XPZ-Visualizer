@@ -6,6 +6,7 @@ import {
 } from "../damage";
 import { randomProfiles } from "../data";
 import { useDamageTypesStore } from "../stores/damageTypesStore";
+import { useInspectorStore } from "../stores/inspectorStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useUiStore } from "../stores/uiStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
@@ -15,12 +16,22 @@ export function useRollDamageModel() {
   const scenarioStore = useScenarioStore();
   const damageTypesStore = useDamageTypesStore();
   const weaponsStore = useWeaponsStore();
+  const inspectorStore = useInspectorStore();
   const uiStore = useUiStore();
   const { currentArmor } = useCurrentArmor();
 
+  const rollWeapon = computed(
+    () =>
+      weaponsStore.editableWeapons.find(
+        (weapon) => weapon.id === inspectorStore.focusedId,
+      ) ??
+      weaponsStore.editableWeapons[0] ??
+      weaponsStore.fallbackWeapon,
+  );
+
   const rollResults = computed(() =>
     buildDamageRollResults(
-      weaponsStore.rollWeapon,
+      rollWeapon.value,
       scenarioStore.scenario,
       currentArmor.value,
       damageTypesStore.editableDamageTypes,
@@ -30,7 +41,7 @@ export function useRollDamageModel() {
 
   const componentCurve = computed(() =>
     buildDamageComponentCurve(
-      weaponsStore.rollWeapon,
+      rollWeapon.value,
       scenarioStore.scenario,
       currentArmor.value,
       damageTypesStore.editableDamageTypes,
@@ -40,7 +51,7 @@ export function useRollDamageModel() {
 
   const rollExpectedDamage = computed(() =>
     expectedDamage(
-      weaponsStore.rollWeapon,
+      rollWeapon.value,
       scenarioStore.scenario,
       currentArmor.value,
       damageTypesStore.editableDamageTypes,
@@ -87,6 +98,7 @@ export function useRollDamageModel() {
   });
 
   return {
+    rollWeapon,
     componentCurve,
     currentArmor,
     inspectedCurvePoint,

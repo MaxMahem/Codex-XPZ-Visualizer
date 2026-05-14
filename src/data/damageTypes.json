@@ -4,20 +4,43 @@
     "name": "0 - None",
     "armorEffectiveness": 1,
     "armorEffectivenessScalesWithPower": false,
-    "hpDamagePercent": 0,
-    "hpDamageRandomized": false,
-    "stunDamagePercent": 0,
-    "stunDamageRandomized": false,
-    "moraleDamagePercent": 0,
-    "moraleDamageRandomized": false,
-    "armorDamagePercent": 0,
-    "armorDamageRandomized": false,
-    "tuDamagePercent": 0,
-    "tuDamageRandomized": false,
-    "energyDamagePercent": 0,
-    "energyDamageRandomized": false,
-    "manaDamagePercent": 0,
-    "manaDamageRandomized": false,
+    "damageComponents": {
+      "hp": {
+        "type": "hp",
+        "percent": 0,
+        "randomized": false
+      },
+      "stun": {
+        "type": "stun",
+        "percent": 0,
+        "randomized": false
+      },
+      "morale": {
+        "type": "morale",
+        "percent": 0,
+        "randomized": false
+      },
+      "armor": {
+        "type": "armor",
+        "percent": 0,
+        "randomized": false
+      },
+      "tu": {
+        "type": "tu",
+        "percent": 0,
+        "randomized": false
+      },
+      "energy": {
+        "type": "energy",
+        "percent": 0,
+        "randomized": false
+      },
+      "mana": {
+        "type": "mana",
+        "percent": 0,
+        "randomized": false
+      }
+    },
     "randomProfileId": "0-200",
     "color": "#999999"
   },
@@ -26,42 +49,88 @@
     "name": "1 - Armor Piercing",
     "armorEffectiveness": 1,
     "armorEffectivenessScalesWithPower": false,
-    "hpDamagePercent": 1,
-    "hpDamageRandomized": false,
-    "stunDamagePercent": 0,
-    "stunDamageRandomized": false,
-    "moraleDamagePercent": 0,
-    "moraleDamageRandomized": false,
-    "armorDamagePercent": 0,
-    "armorDamageRandomized": false,
-    "tuDamagePercent": 0,
-    "tuDamageRandomized": false,
-    "energyDamagePercent": 0,
-    "energyDamageRandomized": false,
-    "manaDamagePercent": 0,
-    "manaDamageRandomized": false,
+    "damageComponents": {
+      "hp": {
+        "type": "hp",
+        "percent": 1,
+        "randomized": false
+      },
+      "stun": {
+        "type": "stun",
+        "percent": 0.25,
+        "randomized": true
+      },
+      "morale": {
+        "type": "morale",
+        "percent": 0,
+        "randomized": false
+      },
+      "armor": {
+        "type": "armor",
+        "percent": 0.1,
+        "randomized": false
+      },
+      "tu": {
+        "type": "tu",
+        "percent": 0,
+        "randomized": false
+      },
+      "energy": {
+        "type": "energy",
+        "percent": 0,
+        "randomized": false
+      },
+      "mana": {
+        "type": "mana",
+        "percent": 0,
+        "randomized": false
+      }
+    },
     "randomProfileId": "0-200",
     "color": "#577365"
   },
   {
     "id": "2-incendiary",
     "name": "2 - Incendiary",
-    "armorEffectiveness": 1,
+    "armorEffectiveness": 0,
     "armorEffectivenessScalesWithPower": false,
-    "hpDamagePercent": 1,
-    "hpDamageRandomized": false,
-    "stunDamagePercent": 0,
-    "stunDamageRandomized": false,
-    "moraleDamagePercent": 0,
-    "moraleDamageRandomized": false,
-    "armorDamagePercent": 0,
-    "armorDamageRandomized": false,
-    "tuDamagePercent": 0,
-    "tuDamageRandomized": false,
-    "energyDamagePercent": 0,
-    "energyDamageRandomized": false,
-    "manaDamagePercent": 0,
-    "manaDamageRandomized": false,
+    "damageComponents": {
+      "hp": {
+        "type": "hp",
+        "percent": 1,
+        "randomized": false
+      },
+      "stun": {
+        "type": "stun",
+        "percent": 0,
+        "randomized": false
+      },
+      "morale": {
+        "type": "morale",
+        "percent": 0,
+        "randomized": false
+      },
+      "armor": {
+        "type": "armor",
+        "percent": 0,
+        "randomized": false
+      },
+      "tu": {
+        "type": "tu",
+        "percent": 0,
+        "randomized": false
+      },
+      "energy": {
+        "type": "energy",
+        "percent": 0,
+        "randomized": false
+      },
+      "mana": {
+        "type": "mana",
+        "percent": 0,
+        "randomized": false
+      }
+    },
     "randomProfileId": "0-200",
     "color": "#d86f45"
   },
@@ -70,20 +139,43 @@
     "name": "3 - High Explosive",
     "armorEffectiveness": 1,
     "armorEffectivenessScalesWithPower": false,
-    "hpDamagePercent": 1,
-    "hpDamageRandomized": false,
-    "stunDamagePercent": 0,
-    "stunDamageRandomized": false,
-    "moraleDamagePercent": 0,
-    "moraleDamageRandomized": false,
-    "armorDamagePercent": 0,
-    "armorDamageRandomized": false,
-    "tuDamagePercent": 0,
-    "tuDamageRandomized": false,
-    "energyDamagePercent": 0,
-    "energyDamageRandomized": false,
-    "manaDamagePercent": 0,
-    "manaDamageRandomized": false,
+    "damageComponents": {
+      "hp": {
+        "type": "hp",
+        "percent": 1,
+        "randomized": false
+      },
+      "stun": {
+        "type": "stun",
+        "percent": 0.25,
+        "randomized": true
+      },
+      "morale": {
+        "type": "morale",
+        "percent": 0,
+        "randomized": false
+      },
+      "armor": {
+        "type": "armor",
+        "percent": 0.1,
+        "randomized": false
+      },
+      "tu": {
+        "type": "tu",
+        "percent": 0,
+        "randomized": false
+      },
+      "energy": {
+        "type": "energy",
+        "percent": 0,
+        "randomized": false
+      },
+      "mana": {
+        "type": "mana",
+        "percent": 0,
+        "randomized": false
+      }
+    },
     "randomProfileId": "50-150",
     "color": "#b68525"
   },
@@ -92,20 +184,43 @@
     "name": "4 - Laser",
     "armorEffectiveness": 1,
     "armorEffectivenessScalesWithPower": false,
-    "hpDamagePercent": 1,
-    "hpDamageRandomized": false,
-    "stunDamagePercent": 0,
-    "stunDamageRandomized": false,
-    "moraleDamagePercent": 0,
-    "moraleDamageRandomized": false,
-    "armorDamagePercent": 0,
-    "armorDamageRandomized": false,
-    "tuDamagePercent": 0,
-    "tuDamageRandomized": false,
-    "energyDamagePercent": 0,
-    "energyDamageRandomized": false,
-    "manaDamagePercent": 0,
-    "manaDamageRandomized": false,
+    "damageComponents": {
+      "hp": {
+        "type": "hp",
+        "percent": 1,
+        "randomized": false
+      },
+      "stun": {
+        "type": "stun",
+        "percent": 0.25,
+        "randomized": true
+      },
+      "morale": {
+        "type": "morale",
+        "percent": 0,
+        "randomized": false
+      },
+      "armor": {
+        "type": "armor",
+        "percent": 0.1,
+        "randomized": false
+      },
+      "tu": {
+        "type": "tu",
+        "percent": 0,
+        "randomized": false
+      },
+      "energy": {
+        "type": "energy",
+        "percent": 0,
+        "randomized": false
+      },
+      "mana": {
+        "type": "mana",
+        "percent": 0,
+        "randomized": false
+      }
+    },
     "randomProfileId": "0-200",
     "color": "#3f8cff"
   },
@@ -114,20 +229,43 @@
     "name": "5 - Plasma",
     "armorEffectiveness": 1,
     "armorEffectivenessScalesWithPower": false,
-    "hpDamagePercent": 1,
-    "hpDamageRandomized": false,
-    "stunDamagePercent": 0,
-    "stunDamageRandomized": false,
-    "moraleDamagePercent": 0,
-    "moraleDamageRandomized": false,
-    "armorDamagePercent": 0,
-    "armorDamageRandomized": false,
-    "tuDamagePercent": 0,
-    "tuDamageRandomized": false,
-    "energyDamagePercent": 0,
-    "energyDamageRandomized": false,
-    "manaDamagePercent": 0,
-    "manaDamageRandomized": false,
+    "damageComponents": {
+      "hp": {
+        "type": "hp",
+        "percent": 1,
+        "randomized": false
+      },
+      "stun": {
+        "type": "stun",
+        "percent": 0.25,
+        "randomized": true
+      },
+      "morale": {
+        "type": "morale",
+        "percent": 0,
+        "randomized": false
+      },
+      "armor": {
+        "type": "armor",
+        "percent": 0.1,
+        "randomized": false
+      },
+      "tu": {
+        "type": "tu",
+        "percent": 0,
+        "randomized": false
+      },
+      "energy": {
+        "type": "energy",
+        "percent": 0,
+        "randomized": false
+      },
+      "mana": {
+        "type": "mana",
+        "percent": 0,
+        "randomized": false
+      }
+    },
     "randomProfileId": "0-200",
     "color": "#00a878"
   },
@@ -136,20 +274,43 @@
     "name": "6 - Stun",
     "armorEffectiveness": 1,
     "armorEffectivenessScalesWithPower": false,
-    "hpDamagePercent": 0,
-    "hpDamageRandomized": false,
-    "stunDamagePercent": 1,
-    "stunDamageRandomized": false,
-    "moraleDamagePercent": 0,
-    "moraleDamageRandomized": false,
-    "armorDamagePercent": 0,
-    "armorDamageRandomized": false,
-    "tuDamagePercent": 0,
-    "tuDamageRandomized": false,
-    "energyDamagePercent": 0,
-    "energyDamageRandomized": false,
-    "manaDamagePercent": 0,
-    "manaDamageRandomized": false,
+    "damageComponents": {
+      "hp": {
+        "type": "hp",
+        "percent": 0,
+        "randomized": false
+      },
+      "stun": {
+        "type": "stun",
+        "percent": 1,
+        "randomized": false
+      },
+      "morale": {
+        "type": "morale",
+        "percent": 0,
+        "randomized": false
+      },
+      "armor": {
+        "type": "armor",
+        "percent": 0,
+        "randomized": false
+      },
+      "tu": {
+        "type": "tu",
+        "percent": 0,
+        "randomized": false
+      },
+      "energy": {
+        "type": "energy",
+        "percent": 0,
+        "randomized": false
+      },
+      "mana": {
+        "type": "mana",
+        "percent": 0,
+        "randomized": false
+      }
+    },
     "randomProfileId": "50-150",
     "color": "#8f79e8"
   },
@@ -158,20 +319,43 @@
     "name": "7 - Melee",
     "armorEffectiveness": 1,
     "armorEffectivenessScalesWithPower": false,
-    "hpDamagePercent": 1,
-    "hpDamageRandomized": false,
-    "stunDamagePercent": 0,
-    "stunDamageRandomized": false,
-    "moraleDamagePercent": 0,
-    "moraleDamageRandomized": false,
-    "armorDamagePercent": 0,
-    "armorDamageRandomized": false,
-    "tuDamagePercent": 0,
-    "tuDamageRandomized": false,
-    "energyDamagePercent": 0,
-    "energyDamageRandomized": false,
-    "manaDamagePercent": 0,
-    "manaDamageRandomized": false,
+    "damageComponents": {
+      "hp": {
+        "type": "hp",
+        "percent": 1,
+        "randomized": false
+      },
+      "stun": {
+        "type": "stun",
+        "percent": 0.25,
+        "randomized": true
+      },
+      "morale": {
+        "type": "morale",
+        "percent": 0,
+        "randomized": false
+      },
+      "armor": {
+        "type": "armor",
+        "percent": 0.1,
+        "randomized": false
+      },
+      "tu": {
+        "type": "tu",
+        "percent": 0,
+        "randomized": false
+      },
+      "energy": {
+        "type": "energy",
+        "percent": 0,
+        "randomized": false
+      },
+      "mana": {
+        "type": "mana",
+        "percent": 0,
+        "randomized": false
+      }
+    },
     "randomProfileId": "0-200",
     "color": "#4c8f8f"
   },
@@ -180,42 +364,88 @@
     "name": "8 - Acid",
     "armorEffectiveness": 1,
     "armorEffectivenessScalesWithPower": false,
-    "hpDamagePercent": 1,
-    "hpDamageRandomized": false,
-    "stunDamagePercent": 0,
-    "stunDamageRandomized": false,
-    "moraleDamagePercent": 0,
-    "moraleDamageRandomized": false,
-    "armorDamagePercent": 0,
-    "armorDamageRandomized": false,
-    "tuDamagePercent": 0,
-    "tuDamageRandomized": false,
-    "energyDamagePercent": 0,
-    "energyDamageRandomized": false,
-    "manaDamagePercent": 0,
-    "manaDamageRandomized": false,
+    "damageComponents": {
+      "hp": {
+        "type": "hp",
+        "percent": 1,
+        "randomized": false
+      },
+      "stun": {
+        "type": "stun",
+        "percent": 0.25,
+        "randomized": true
+      },
+      "morale": {
+        "type": "morale",
+        "percent": 0,
+        "randomized": false
+      },
+      "armor": {
+        "type": "armor",
+        "percent": 0.1,
+        "randomized": false
+      },
+      "tu": {
+        "type": "tu",
+        "percent": 0,
+        "randomized": false
+      },
+      "energy": {
+        "type": "energy",
+        "percent": 0,
+        "randomized": false
+      },
+      "mana": {
+        "type": "mana",
+        "percent": 0,
+        "randomized": false
+      }
+    },
     "randomProfileId": "0-200",
     "color": "#a75f9b"
   },
   {
     "id": "9-smoke",
     "name": "9 - Smoke",
-    "armorEffectiveness": 1,
+    "armorEffectiveness": 0,
     "armorEffectivenessScalesWithPower": false,
-    "hpDamagePercent": 0,
-    "hpDamageRandomized": false,
-    "stunDamagePercent": 0,
-    "stunDamageRandomized": false,
-    "moraleDamagePercent": 0,
-    "moraleDamageRandomized": false,
-    "armorDamagePercent": 0,
-    "armorDamageRandomized": false,
-    "tuDamagePercent": 0,
-    "tuDamageRandomized": false,
-    "energyDamagePercent": 0,
-    "energyDamageRandomized": false,
-    "manaDamagePercent": 0,
-    "manaDamageRandomized": false,
+    "damageComponents": {
+      "hp": {
+        "type": "hp",
+        "percent": 0,
+        "randomized": false
+      },
+      "stun": {
+        "type": "stun",
+        "percent": 0,
+        "randomized": false
+      },
+      "morale": {
+        "type": "morale",
+        "percent": 0,
+        "randomized": false
+      },
+      "armor": {
+        "type": "armor",
+        "percent": 0,
+        "randomized": false
+      },
+      "tu": {
+        "type": "tu",
+        "percent": 0,
+        "randomized": false
+      },
+      "energy": {
+        "type": "energy",
+        "percent": 0,
+        "randomized": false
+      },
+      "mana": {
+        "type": "mana",
+        "percent": 0,
+        "randomized": false
+      }
+    },
     "randomProfileId": "0-200",
     "color": "#777777"
   }
