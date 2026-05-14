@@ -56,7 +56,7 @@ const targetHpTooltip = computed(() => makeTargetHpTooltip(scenario.value.hitPoi
       <div class="table-row table-head">
         <span class="has-tip" tabindex="0" data-tip="Selected weapon or ammo system.">Weapon</span>
         <span class="has-tip" tabindex="0" data-tip="Base power plus stat bonuses before roll and damage factor.">Power</span>
-        <span class="has-tip" tabindex="0" data-tip="Armor after scenario armor effectiveness and AP / ArmorEffectiveness. ToArmorPre is not included yet.">Armor</span>
+        <span class="has-tip" tabindex="0" data-tip="Armor after scenario armor effectiveness and AP / ArmorEffectiveness. Pre-armor damage is tracked as a separate component.">Armor</span>
         <span class="has-tip" tabindex="0" data-tip="Expected HP damage after all primary roll outcomes, armor, HP component percent, and any HP component RNG.">Expected HP</span>
         <span class="has-tip" tabindex="0" data-tip="Expected stun damage after all primary roll outcomes, armor, stun component percent, and any stun component RNG.">Expected Stun</span>
         <span class="has-tip" tabindex="0" data-tip="Chance HP damage alone reaches or exceeds target HP at the inspected armor value.">Kill</span>
@@ -76,7 +76,7 @@ const targetHpTooltip = computed(() => makeTargetHpTooltip(scenario.value.hitPoi
         <span
           class="has-tip"
           tabindex="0"
-          data-tip="Armor value after AP / ArmorEffectiveness. ToArmorPre is displayed on weapons but not included yet."
+          data-tip="Armor value after AP / ArmorEffectiveness."
         >
           {{ formatDamage(row.effectiveArmor) }}
         </span>

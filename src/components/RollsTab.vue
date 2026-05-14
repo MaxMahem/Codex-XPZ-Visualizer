@@ -1,24 +1,51 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useInspectorStore } from "../stores/inspectorStore";
 import { useRollDamageModel } from "../composables/useRollDamageModel";
 import { useScenarioStore } from "../stores/scenarioStore";
+import { damageComponentOptions } from "../stores/damageTypesStore";
+import { useUiStore } from "../stores/uiStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
 import RollsChart from "./RollsChart.vue";
-import { formatPercent } from "../utils/formatters";
+import { formatPercent, formatAverage } from "../utils/formatters";
+import type { DamageComponentKey } from "../types";
 
 defineProps<{
   embedded?: boolean;
 }>();
 
 const scenarioStore = useScenarioStore();
+const uiStore = useUiStore();
 const weaponsStore = useWeaponsStore();
 const inspectorStore = useInspectorStore();
-const { currentArmor, rollStats, rollWeapon } = useRollDamageModel();
+const { currentArmor, rollStats, rollWeapon, rollExpectedComponents } = useRollDamageModel();
 
 const { scenario } = storeToRefs(scenarioStore);
 const { editableWeapons } = storeToRefs(weaponsStore);
 const { focusedId } = storeToRefs(inspectorStore);
+const { visibleRollComponents } = storeToRefs(uiStore);
+const rollLegendComponents = computed(() =>
+  damageComponentOptions.filter((component) => component.key !== "preArmor"),
+);
+
+const componentSwatches: Record<DamageComponentKey, string> = {
+  hp: "hp-area",
+  stun: "stun-area",
+  morale: "morale-line",
+  armor: "armor-line",
+  preArmor: "armor-line",
+  tu: "tu-line",
+  energy: "energy-line",
+  mana: "mana-line",
+};
+
+function rollLegendTotal(component: DamageComponentKey): number {
+  if (component === "armor") {
+    return rollExpectedComponents.value.armor + rollExpectedComponents.value.preArmor;
+  }
+  return rollExpectedComponents.value[component];
+}
 </script>
 
 <template>
@@ -78,22 +105,31 @@ const { focusedId } = storeToRefs(inspectorStore);
     </div>
 
     <div class="chart-legend" aria-label="Roll chart legend">
-      <span
-        class="legend-item has-tip"
+      <button
+        v-for="component in rollLegendComponents"
+        :key="component.key"
+        class="legend-item legend-toggle has-tip"
+        :class="{ inactive: !visibleRollComponents.includes(component.key) }"
+        type="button"
+        :aria-pressed="visibleRollComponents.includes(component.key)"
+        @click="uiStore.toggleRollComponent(component.key)"
         tabindex="0"
-        data-tip="The solid weapon-colored line shows final damage by cumulative chance percentile."
+        :data-tip="component.key === 'hp'
+          ? 'Toggle HP damage. HP forms the base filled area when visible.'
+          : component.key === 'stun'
+            ? 'Toggle stun damage. Stun stacks above HP when HP is also visible.'
+            : component.key === 'armor'
+              ? 'Toggle armor damage plus pre-armor damage as one non-stacked line.'
+              : `Toggle ${component.label} damage as its own non-stacked line.`"
       >
-        <i class="legend-swatch hp-area" :style="{ backgroundColor: rollWeapon.color }"></i>
-        HP damage
-      </span>
-      <span
-        class="legend-item has-tip"
-        tabindex="0"
-        data-tip="The upper stacked area shows average integer stun damage added on top of HP for the same primary damage percentile."
-      >
-        <i class="legend-swatch stun-area"></i>
-        Stun damage
-      </span>
+        <i
+          class="legend-swatch"
+          :class="componentSwatches[component.key]"
+          :style="component.key === 'hp' ? { backgroundColor: rollWeapon.color } : undefined"
+        ></i>
+        <span class="legend-label">{{ component.label }}</span>
+        <span class="legend-total">{{ formatAverage(rollLegendTotal(component.key)) }}</span>
+      </button>
     </div>
 
     <RollsChart :targetHp="scenario.hitPoints" />

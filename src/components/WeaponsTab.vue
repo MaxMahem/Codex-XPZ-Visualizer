@@ -146,7 +146,6 @@ function bonusPreview(weapon: WeaponSystem): string {
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Editable weapon or ammo display name.">Name</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Damage type (switching resets all weapon-specific 'Alter' overrides to the new type's defaults).">Damage Type</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Base item power before stat bonuses.">Base</span>
-          <span class="has-tip" role="columnheader" tabindex="0" data-tip="Imported from damageAlter.ToArmorPre. It is shown here because it matters, but it is not included in calculations yet.">Pre Armor %</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="AP armor multiplier. Imported from damageAlter.ArmorEffectiveness when present; otherwise inherited from the damage type. 50% means armor counts at half value.">AP %</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Total power bonus from damage bonus entries for the current scenario stats.">Bonus</span>
           <span class="has-tip" role="columnheader" tabindex="0" data-tip="Editable final power after stat bonuses for the current scenario. Editing this adjusts Base.">Power</span>
@@ -190,15 +189,6 @@ function bonusPreview(weapon: WeaponSystem): string {
           </span>
           <span role="cell">
             <input v-model.number="weapon.basePower" class="dense-input number-input" type="number" min="0" max="500" step="1" title="Base power" />
-          </span>
-          <span role="cell">
-            <PercentInput
-              :modelValue="weapon.armorPenetration"
-              class="dense-input number-input"
-              :max="100"
-              title="ToArmorPre percent. Displayed only; not included in calculations yet."
-              @update:modelValue="weaponsStore.setWeaponArmorPenetration(weapon, $event ?? 0)"
-            />
           </span>
           <span role="cell">
             <PercentInput

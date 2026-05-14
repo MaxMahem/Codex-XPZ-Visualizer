@@ -134,14 +134,20 @@ test("weapon armor effectiveness override wins over damage type power scaling", 
   assert.equal(effectiveArmor(overrideWeapon, scenario, 10, [damageType]), 5);
 });
 
-test("ToArmorPre is imported but not applied to armor calculations yet", () => {
+test("ToArmorPre is tracked as pre-armor damage without changing current armor math", () => {
   const toArmorPreWeapon: WeaponSystem = {
     ...weapon,
-    armorPenetration: 0.9,
+    damageModifierOverrides: {
+      preArmor: 0.9,
+    },
+    damageRandomizedOverrides: {
+      preArmor: true,
+    },
   };
 
   assert.equal(effectiveArmor(toArmorPreWeapon, scenario, 10, [flatHpType]), 10);
   assert.equal(damageAtRoll(toArmorPreWeapon, scenario, 10, 1, [flatHpType]), 30);
+  assert.equal(expectedComponentDamage(toArmorPreWeapon, scenario, 10, [flatHpType], "preArmor", [flatProfile]), 17.524752475247524);
 });
 
 test("expectedTotalDamage matches the full roll-result engine with randomized stun", () => {
@@ -178,6 +184,7 @@ items:
     damageAlter:
       ArmorEffectiveness: 0.666
       ToArmorPre: 0.025
+      RandomArmorPre: true
       ToHealth: 0.75
       ToStun: 0.25
       RandomStun: true
@@ -196,7 +203,8 @@ items:
 
   assert.equal(imported.weapons.length, 1);
   assert.equal(imported.weapons[0].basePower, 42);
-  assert.equal(imported.weapons[0].armorPenetration, 0.025);
+  assert.equal(imported.weapons[0].damageModifierOverrides?.preArmor, 0.025);
+  assert.equal(imported.weapons[0].damageRandomizedOverrides?.preArmor, true);
   assert.equal(imported.weapons[0].damageTypeId, "4-laser");
   assert.equal(imported.weapons[0].armorEffectivenessOverride, 0.666);
   assert.equal(imported.weapons[0].damageModifierOverrides?.hp, 0.75);
@@ -236,5 +244,5 @@ items:
   assert.equal(imported.weapons[0].basePower, 150);
   assert.equal(imported.weapons[0].damageTypeId, "4-laser");
   assert.equal(imported.weapons[0].armorEffectivenessOverride, 0.5);
-  assert.equal(imported.weapons[0].armorPenetration, 0.025);
+  assert.equal(imported.weapons[0].damageModifierOverrides?.preArmor, 0.025);
 });

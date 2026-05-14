@@ -392,6 +392,28 @@ button:focus-visible {
   font-weight: 800;
 }
 
+.legend-label {
+  flex: 1;
+}
+
+.legend-total {
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 999px;
+  margin-left: -2px;
+}
+
+.legend-toggle {
+  cursor: pointer;
+}
+
+.legend-toggle.inactive {
+  opacity: 0.42;
+}
+
 .legend-line {
   display: inline-block;
   width: 28px;
@@ -431,6 +453,37 @@ button:focus-visible {
 .legend-swatch.stun-area {
   background: #38bfa7;
   border: 1px solid #147d70;
+}
+
+.legend-swatch.morale-line,
+.legend-swatch.armor-line,
+.legend-swatch.tu-line,
+.legend-swatch.energy-line,
+.legend-swatch.mana-line {
+  height: 0;
+  border-radius: 0;
+  background: transparent;
+  border-top: 3px solid currentColor;
+}
+
+.legend-swatch.morale-line {
+  color: #7c4ec7;
+}
+
+.legend-swatch.armor-line {
+  color: #60706a;
+}
+
+.legend-swatch.tu-line {
+  color: #c27a1a;
+}
+
+.legend-swatch.energy-line {
+  color: #2474c8;
+}
+
+.legend-swatch.mana-line {
+  color: #a83f90;
 }
 
 .chart-frame {
@@ -500,6 +553,30 @@ svg {
   stroke-width: 2.6;
 }
 
+.component-line {
+  stroke-width: 2.4;
+}
+
+.morale-component-line {
+  stroke: #7c4ec7;
+}
+
+.armor-component-line {
+  stroke: #60706a;
+}
+
+.tu-component-line {
+  stroke: #c27a1a;
+}
+
+.energy-component-line {
+  stroke: #2474c8;
+}
+
+.mana-component-line {
+  stroke: #a83f90;
+}
+
 .hover-line {
   stroke: #26332d;
   stroke-dasharray: 3 4;
@@ -516,6 +593,31 @@ svg {
   fill: #0f7468;
   stroke: #fff;
   stroke-width: 1.5;
+}
+
+.component-inspect-dot {
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.morale-inspect-dot {
+  fill: #7c4ec7;
+}
+
+.armor-inspect-dot {
+  fill: #60706a;
+}
+
+.tu-inspect-dot {
+  fill: #c27a1a;
+}
+
+.energy-inspect-dot {
+  fill: #2474c8;
+}
+
+.mana-inspect-dot {
+  fill: #a83f90;
 }
 
 .chart-tooltip rect {
@@ -1031,7 +1133,7 @@ select:disabled {
 
 .weapon-edit-row {
   display: grid;
-  grid-template-columns: 44px minmax(150px, 1.4fr) minmax(130px, 1fr) 68px 74px 92px 68px 72px 120px 38px;
+  grid-template-columns: 44px minmax(150px, 1.4fr) minmax(130px, 1fr) 68px 92px 68px 72px 120px 38px;
   gap: 6px;
   align-items: center;
   padding: 5px 8px;
