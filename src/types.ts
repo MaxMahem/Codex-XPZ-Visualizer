@@ -62,6 +62,7 @@ export interface Scenario {
   mana: number;
   rank: number;
   hitPoints: number;
+  targetBravery: number;
   armor: number;
   armorEffectiveness: number;
   armorMin: number;

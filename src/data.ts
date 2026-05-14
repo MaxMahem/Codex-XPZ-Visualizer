@@ -6,7 +6,7 @@ import damageTypesJson from "./data/damageTypes.json";
 export const defaultScenario: Scenario = {
   strength: 75,
   melee: 90,
-  bravery: 30,
+  bravery: 50,
   firing: 60,
   reactions: 50,
   throwing: 50,
@@ -15,6 +15,7 @@ export const defaultScenario: Scenario = {
   mana: 0,
   rank: 0,
   hitPoints: 45,
+  targetBravery: 50,
   armor: 40,
   armorEffectiveness: 1,
   armorMin: 0,
