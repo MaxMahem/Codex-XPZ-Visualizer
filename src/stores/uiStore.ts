@@ -3,7 +3,7 @@ import { ref } from "vue";
 import type { DamageMetricKey } from "../types";
 
 export type AppTab = "compare" | "damage-types" | "weapons";
-export type HeatmapMetric = DamageMetricKey;
+export type HeatmapMetric = Exclude<DamageMetricKey, "panicChance">;
 
 export const heatmapMetrics: Array<{ key: HeatmapMetric; label: string }> = [
   { key: "hp", label: "HP" },

@@ -33,7 +33,7 @@ export interface WeaponSystem {
 }
 
 export type DamageComponentKey = "hp" | "stun" | "morale" | "armor" | "preArmor" | "tu" | "energy" | "mana";
-export type DerivedDamageMetricKey = "hp-stun" | "scaledMorale";
+export type DerivedDamageMetricKey = "hp-stun" | "scaledMorale" | "panicChance";
 export type DamageMetricKey = DamageComponentKey | DerivedDamageMetricKey;
 
 export interface DamageComponent {
@@ -96,6 +96,7 @@ export interface DamageRollResult {
   energyDamage: number;
   manaDamage: number;
   scaledMoraleDamage: number;
+  panicChance: number;
   totalDamage: number;
   damage: number;
   count: number;
@@ -114,6 +115,7 @@ export interface DamageComponentCurvePoint {
   energyDamage: number;
   manaDamage: number;
   scaledMoraleDamage: number;
+  panicChance: number;
   totalDamage: number;
 }
 

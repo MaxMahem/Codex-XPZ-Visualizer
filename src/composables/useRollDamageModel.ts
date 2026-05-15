@@ -4,6 +4,7 @@ import {
   buildDamageRollResults,
   expectedDamage,
   expectedDamageComponents,
+  expectedPanicChance,
 } from "../damage";
 import { randomProfiles } from "../data";
 import { useDamageTypesStore } from "../stores/damageTypesStore";
@@ -86,9 +87,10 @@ export function useRollDamageModel() {
 
   const rollStats = computed(() => {
     const results = rollResults.value;
+    const damageComponents = uiStore.visibleRollComponents.filter((component) => component !== "panicChance");
     const damages = componentCurve.value.flatMap((result) => [
       result.totalDamage,
-      ...uiStore.visibleRollComponents.map((component) => visibleComponentDamage(result, component)),
+      ...damageComponents.map((component) => visibleComponentDamage(result, component)),
     ]);
     const minDamage = Math.min(...damages, 0);
     const maxDamage = Math.max(...damages, scenarioStore.scenario.hitPoints, rollExpectedDamage.value, 10);
@@ -105,6 +107,13 @@ export function useRollDamageModel() {
     return {
       minDamage,
       maxDamage,
+      effectivePanicChance: expectedPanicChance(
+        rollWeapon.value,
+        scenarioStore.scenario,
+        currentArmor.value,
+        damageTypesStore.editableDamageTypes,
+        randomProfiles,
+      ),
       zeroChance,
       killChance,
       koChance,
@@ -131,6 +140,7 @@ function visibleComponentDamage(result: DamageComponentCurvePoint, component: Da
     case "hp-stun": return result.hpDamage + result.stunDamage;
     case "morale": return result.scaledMoraleDamage;
     case "scaledMorale": return result.scaledMoraleDamage;
+    case "panicChance": return result.panicChance;
     case "armor": return result.armorDamage + result.preArmorDamage;
     case "preArmor": return result.preArmorDamage;
     case "tu": return result.tuDamage;

@@ -26,13 +26,17 @@ const { editableWeapons } = storeToRefs(weaponsStore);
 const { focusedId } = storeToRefs(inspectorStore);
 const { visibleRollComponents } = storeToRefs(uiStore);
 const rollLegendComponents = computed(() =>
-  damageComponentOptions.filter((component) => component.key !== "preArmor"),
+  [
+    ...damageComponentOptions.filter((component) => component.key !== "preArmor"),
+    { key: "panicChance" as const, label: "Panic Chance" },
+  ],
 );
 
 const componentSwatches: Partial<Record<DamageMetricKey, string>> = {
   hp: "hp-area",
   stun: "stun-area",
   morale: "morale-line",
+  panicChance: "panic-line",
   armor: "armor-line",
   preArmor: "armor-line",
   tu: "tu-line",
@@ -47,12 +51,15 @@ function rollLegendTotal(component: DamageMetricKey): string {
   if (component === "hp-stun") {
     return formatAverage(rollExpectedComponents.value.hp + rollExpectedComponents.value.stun);
   }
+  if (component === "panicChance") {
+    return `${formatAverage(rollStats.value.effectivePanicChance)}%`;
+  }
   if (component === "morale") {
-    const scaled = Math.floor(((110 - scenario.value.targetBravery) * rollExpectedComponents.value.morale) / 100);
+    const scaled = Math.round(((110 - scenario.value.targetBravery) * rollExpectedComponents.value.morale) / 100);
     return `${formatAverage(scaled)} (${formatAverage(rollExpectedComponents.value.morale)})`;
   }
   if (component === "scaledMorale") {
-    return formatAverage(Math.floor(((110 - scenario.value.targetBravery) * rollExpectedComponents.value.morale) / 100));
+    return formatAverage(Math.round(((110 - scenario.value.targetBravery) * rollExpectedComponents.value.morale) / 100));
   }
   return formatAverage(rollExpectedComponents.value[component]);
 }
@@ -130,6 +137,8 @@ function rollLegendTotal(component: DamageMetricKey): string {
             ? 'Toggle stun damage. Stun stacks above HP when HP is also visible.'
             : component.key === 'morale'
               ? 'Toggle target-scaled morale damage. The parenthetical number is the raw weapon morale before target bravery.'
+              : component.key === 'panicChance'
+                ? 'Toggle panic chance from scaled morale damage. This uses the right-side percent axis.'
               : component.key === 'armor'
                 ? 'Toggle armor damage plus pre-armor damage as one non-stacked line.'
                 : `Toggle ${component.label} damage as its own non-stacked line.`"

@@ -25,6 +25,11 @@ function rollY(damage: number): number {
   return height - (damage / rollStats.value.maxDamage) * height;
 }
 
+function panicY(chance: number): number {
+  const height = 260;
+  return height - (chance / 100) * height;
+}
+
 function rollPath(results: DamageComponentCurvePoint[]): string {
   return results
     .map((result, index) => {
@@ -42,6 +47,16 @@ function componentLinePath(component: Exclude<DamageMetricKey, "hp" | "stun" | "
   })));
 }
 
+function panicLinePath(results: DamageComponentCurvePoint[]): string {
+  return results
+    .map((result, index) => {
+      const x = rollX(result.percentile);
+      const y = panicY(result.panicChance);
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
 function componentDamage(result: DamageComponentCurvePoint, component: DamageMetricKey): number {
   switch (component) {
     case "hp": return result.hpDamage;
@@ -49,6 +64,7 @@ function componentDamage(result: DamageComponentCurvePoint, component: DamageMet
     case "hp-stun": return result.hpDamage + result.stunDamage;
     case "morale": return result.scaledMoraleDamage;
     case "scaledMorale": return result.scaledMoraleDamage;
+    case "panicChance": return result.panicChance;
     case "armor": return result.armorDamage + result.preArmorDamage;
     case "preArmor": return result.preArmorDamage;
     case "tu": return result.tuDamage;
@@ -84,6 +100,8 @@ function tooltipRows(point: DamageComponentCurvePoint): string[] {
   for (const component of visibleRollComponents.value) {
     if (component === "morale") {
       rows.push(`Morale ${formatDamage(point.scaledMoraleDamage)} (${formatDamage(point.moraleDamage)} raw)`);
+    } else if (component === "panicChance") {
+      rows.push(`Panic Chance ${formatDamage(point.panicChance)}%`);
     } else {
       rows.push(`${componentLabel(component)} ${formatDamage(componentDamage(point, component))}`);
     }
@@ -102,6 +120,7 @@ function componentLabel(component: DamageMetricKey): string {
     case "hp-stun": return "HP + Stun";
     case "morale": return "Morale";
     case "scaledMorale": return "Morale";
+    case "panicChance": return "Panic Chance";
     case "armor": return "Armor";
     case "preArmor": return "Pre Armor";
     case "tu": return "TU";
@@ -158,6 +177,11 @@ function inspectorLabelX(point: DamageComponentCurvePoint): number {
 
 function inspectorLabelY(point: DamageComponentCurvePoint): number {
   return Math.max(10, rollY(hoverTopDamage(point)) - tooltipHeight(point) - 8);
+}
+
+function panicYLabel(index: number): string {
+  const ticks = 4;
+  return `${Math.round((100 * (ticks - 1 - index)) / (ticks - 1))}%`;
 }
 
 function handlePointer(event: PointerEvent): void {
@@ -274,6 +298,13 @@ function clearPointer(): void {
         >
           <title>{{ component }} damage by cumulative percentile</title>
         </path>
+        <path
+          v-if="componentVisible('panicChance')"
+          class="damage-line component-line panicChance-component-line"
+          :d="panicLinePath(componentCurve)"
+        >
+          <title>Panic chance by cumulative percentile</title>
+        </path>
         <line
           v-if="inspectedCurvePoint"
           class="hover-line"
@@ -312,6 +343,15 @@ function clearPointer(): void {
         >
           <title>{{ percentileTooltip(inspectedCurvePoint!, visibleRollComponents) }}</title>
         </circle>
+        <circle
+          v-if="inspectedCurvePoint && componentVisible('panicChance')"
+          class="component-inspect-dot panicChance-inspect-dot"
+          r="4"
+          :cx="rollX(inspectedCurvePoint.percentile)"
+          :cy="panicY(inspectedCurvePoint.panicChance)"
+        >
+          <title>{{ percentileTooltip(inspectedCurvePoint, visibleRollComponents) }}</title>
+        </circle>
         <g
           v-if="inspectedCurvePoint"
           class="chart-tooltip"
@@ -349,6 +389,18 @@ function clearPointer(): void {
           {{ rollXLabel(index - 1) }}
           <title>Cumulative chance percentile</title>
         </text>
+        <text
+          v-if="componentVisible('panicChance')"
+          v-for="index in 4"
+          :key="`panic-yl-${index}`"
+          class="axis-label panic-axis-label"
+          x="772"
+          text-anchor="start"
+          :y="((index - 1) / 3) * 260 + 4"
+        >
+          {{ panicYLabel(index - 1) }}
+          <title>Panic chance</title>
+        </text>
         <text class="axis-title x-axis-title" x="380" y="322" text-anchor="middle">
           Cumulative chance
         </text>
@@ -360,6 +412,16 @@ function clearPointer(): void {
           transform="rotate(-90 -42 130)"
         >
           Damage
+        </text>
+        <text
+          v-if="componentVisible('panicChance')"
+          class="axis-title panic-axis-title"
+          x="816"
+          y="130"
+          text-anchor="middle"
+          transform="rotate(90 816 130)"
+        >
+          Panic chance
         </text>
       </g>
     </svg>
