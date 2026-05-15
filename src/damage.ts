@@ -207,6 +207,24 @@ export function expectedTotalDamage(
   );
 }
 
+export function panicChanceFromScaledMoraleDamage(scaledMoraleDamage: number): number {
+  const remainingMorale = Math.max(0, 100 - scaledMoraleDamage);
+  return clamp(100 - 2 * remainingMorale, 0, 100);
+}
+
+export function expectedPanicChance(
+  weapon: WeaponSystem,
+  scenario: Scenario,
+  armor: number,
+  damageTypes: DamageType[],
+  randomProfiles: RandomProfile[] = [],
+): number {
+  return buildDamageRollResults(weapon, scenario, armor, damageTypes, randomProfiles).reduce(
+    (sum, result) => sum + result.panicChance * result.probability,
+    0,
+  );
+}
+
 export function expectedComponentDamage(
   weapon: WeaponSystem,
   scenario: Scenario,
@@ -345,13 +363,13 @@ function expectedRawComponent(baseDamage: number, percent: number, randomized: b
 
   const outcomes = componentRollOutcomes(randomized);
   return outcomes.reduce((sum, roll) => {
-    const value = Math.floor(baseDamage * percent * roll.multiplier);
+    const value = Math.round(baseDamage * percent * roll.multiplier);
     return sum + value * roll.probability;
   }, 0);
 }
 
 function scaledMoraleDamage(rawMoraleDamage: number, scenario: Scenario): number {
-  return Math.floor(((110 - scenario.targetBravery) * rawMoraleDamage) / 100);
+  return Math.round(((110 - scenario.targetBravery) * rawMoraleDamage) / 100);
 }
 
 export function buildDamageComponentCurve(
@@ -401,6 +419,7 @@ export function buildDamageComponentCurve(
     const hpDamage = expectedIntegerComponent(postArmorDamage, hpPercent, !!hpRandomized);
     const stunDamage = expectedIntegerComponent(postArmorDamage, stunPercent, !!stunRandomized);
     const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, !!moraleRandomized);
+    const scaledMorale = scaledMoraleDamage(moraleDamage, scenario);
     const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, !!armorRandomized);
     const preArmorDamage = expectedIntegerComponent(rolledPower, preArmorPercent, !!preArmorRandomized);
     const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, !!tuRandomized);
@@ -413,7 +432,8 @@ export function buildDamageComponentCurve(
       hpDamage,
       stunDamage,
       moraleDamage,
-      scaledMoraleDamage: scaledMoraleDamage(moraleDamage, scenario),
+      scaledMoraleDamage: scaledMorale,
+      panicChance: panicChanceFromScaledMoraleDamage(scaledMorale),
       armorDamage,
       preArmorDamage,
       tuDamage,
@@ -435,7 +455,7 @@ export function buildDamageDistribution(
   const outcomes = rollOutcomes(weapon, damageTypes, randomProfiles);
 
   for (const outcome of outcomes) {
-    const damage = Math.floor(
+    const damage = Math.round(
       damageAtRoll(weapon, scenario, armor, outcome.rollPercent / 100, damageTypes),
     );
     counts.set(damage, (counts.get(damage) ?? 0) + outcome.count);
@@ -503,9 +523,10 @@ export function buildDamageRollResults(
 
     for (const hpRoll of hpRolls) {
       for (const stunRoll of stunRolls) {
-        const hpDamage = Math.floor(postArmorDamage * hpPercent * hpRoll.multiplier);
-        const stunDamage = Math.floor(postArmorDamage * stunPercent * stunRoll.multiplier);
+        const hpDamage = Math.round(postArmorDamage * hpPercent * hpRoll.multiplier);
+        const stunDamage = Math.round(postArmorDamage * stunPercent * stunRoll.multiplier);
         const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, !!moraleRandomized);
+        const scaledMorale = scaledMoraleDamage(moraleDamage, scenario);
         const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, !!armorRandomized);
         const preArmorDamage = expectedIntegerComponent(rolledPower, preArmorPercent, !!preArmorRandomized);
         const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, !!tuRandomized);
@@ -516,7 +537,8 @@ export function buildDamageRollResults(
           hpDamage,
           stunDamage,
           moraleDamage,
-          scaledMoraleDamage: scaledMoraleDamage(moraleDamage, scenario),
+          scaledMoraleDamage: scaledMorale,
+          panicChance: panicChanceFromScaledMoraleDamage(scaledMorale),
           armorDamage,
           preArmorDamage,
           tuDamage,

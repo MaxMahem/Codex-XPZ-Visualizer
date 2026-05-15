@@ -25,6 +25,9 @@ export function percentileTooltip(
       if (component === "morale") {
         return `Morale ${formatDamage(result.scaledMoraleDamage)} (${formatDamage(result.moraleDamage)} raw)`;
       }
+      if (component === "panicChance") {
+        return `Panic Chance ${formatDamage(result.panicChance)}%`;
+      }
       return `${componentLabel(component)} ${formatDamage(componentDamage(result, component))}`;
     })
     .join(", ");
@@ -126,6 +129,7 @@ function componentDamage(result: DamageComponentCurvePoint, component: DamageMet
     case "hp-stun": return result.hpDamage + result.stunDamage;
     case "morale": return result.scaledMoraleDamage;
     case "scaledMorale": return result.scaledMoraleDamage;
+    case "panicChance": return result.panicChance;
     case "armor": return result.armorDamage + result.preArmorDamage;
     case "preArmor": return result.preArmorDamage;
     case "tu": return result.tuDamage;
@@ -141,6 +145,7 @@ function componentLabel(component: DamageMetricKey): string {
     case "hp-stun": return "HP + Stun";
     case "morale": return "Morale";
     case "scaledMorale": return "Morale";
+    case "panicChance": return "Panic Chance";
     case "armor": return "Armor";
     case "preArmor": return "Pre Armor";
     case "tu": return "TU";

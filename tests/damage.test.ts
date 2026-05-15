@@ -7,7 +7,9 @@ import {
   effectiveArmor,
   expectedDamage,
   expectedComponentDamage,
+  expectedPanicChance,
   expectedTotalDamage,
+  panicChanceFromScaledMoraleDamage,
 } from "../src/damage.ts";
 import { importOpenXcomItems } from "../src/rulImport.ts";
 import type { DamageType, RandomProfile, Scenario, WeaponSystem } from "../src/types.ts";
@@ -187,6 +189,20 @@ test("raw morale component does not depend on target bravery", () => {
 
   assert.equal(expectedComponentDamage(weapon, braveTarget, 0, [damageType], "morale", [flatProfile]), 20);
   assert.equal(expectedComponentDamage(weapon, panickedTarget, 0, [damageType], "morale", [flatProfile]), 20);
+});
+
+test("panic chance derives from scaled morale damage and averages over rolls", () => {
+  const damageType: DamageType = {
+    ...flatHpType,
+    hpDamagePercent: 0,
+    moraleDamagePercent: 1,
+  };
+  const moraleWeapon = { ...weapon, basePower: 100 };
+
+  assert.equal(panicChanceFromScaledMoraleDamage(60), 20);
+  assert.equal(panicChanceFromScaledMoraleDamage(20), 0);
+  assert.equal(panicChanceFromScaledMoraleDamage(120), 100);
+  assert.equal(expectedPanicChance(moraleWeapon, scenario, 0, [damageType], [flatProfile]), 20);
 });
 
 test("imports powered OpenXcom items mapping to damage types and overrides", () => {

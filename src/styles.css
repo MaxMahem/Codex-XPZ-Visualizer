@@ -456,6 +456,7 @@ button:focus-visible {
 }
 
 .legend-swatch.morale-line,
+.legend-swatch.panic-line,
 .legend-swatch.armor-line,
 .legend-swatch.tu-line,
 .legend-swatch.energy-line,
@@ -468,6 +469,10 @@ button:focus-visible {
 
 .legend-swatch.morale-line {
   color: #7c4ec7;
+}
+
+.legend-swatch.panic-line {
+  color: #d04f8c;
 }
 
 .legend-swatch.armor-line {
@@ -566,6 +571,10 @@ svg {
   stroke-dasharray: 5 4;
 }
 
+.panicChance-component-line {
+  stroke: #d04f8c;
+}
+
 .armor-component-line {
   stroke: #60706a;
 }
@@ -611,6 +620,10 @@ svg {
 
 .scaledMorale-inspect-dot {
   fill: #a06ad7;
+}
+
+.panicChance-inspect-dot {
+  fill: #d04f8c;
 }
 
 .armor-inspect-dot {

@@ -222,7 +222,7 @@ export function useHeatmapModel() {
       return hpStunValues[index];
     }
     if (metric === "scaledMorale") {
-      return Math.floor(((110 - scenarioStore.scenario.targetBravery) * values.morale[index]) / 100);
+      return Math.round(((110 - scenarioStore.scenario.targetBravery) * values.morale[index]) / 100);
     }
     if (metric === "armor") {
       return values.armor[index] + values.preArmor[index];
@@ -291,12 +291,12 @@ function expectedComponentFromPostArmor(
   }
 
   if (!randomized) {
-    return Math.floor(postArmorDamage * percent);
+    return Math.round(postArmorDamage * percent);
   }
 
   let sum = 0;
   for (let roll = 0; roll <= 100; roll += 1) {
-    sum += Math.floor(postArmorDamage * percent * (roll / 100));
+    sum += Math.round(postArmorDamage * percent * (roll / 100));
   }
   return sum / 101;
 }
