@@ -93,6 +93,10 @@ export function modifiedPower(weapon: WeaponSystem, scenario: Scenario): number 
   return weapon.basePower + computeDamageBonus(weapon.damageBonus ?? [], scenario);
 }
 
+export function rolledPowerBase(weapon: WeaponSystem, scenario: Scenario): number {
+  return Math.max(0, Math.round(modifiedPower(weapon, scenario)));
+}
+
 export function damageTypeFor(
   weapon: WeaponSystem,
   damageTypes: DamageType[],
@@ -138,15 +142,31 @@ export function randomProfileFor(
 
 export function rollOutcomes(
   weapon: WeaponSystem,
+  scenario: Scenario,
   damageTypes: DamageType[],
   randomProfiles: RandomProfile[] = [],
-): Array<{ rollPercent: number; count: number; probability: number }> {
+): Array<{ rollPercent: number; rolledPower: number; count: number; probability: number }> {
   const profile = randomProfileFor(weapon, damageTypes, randomProfiles);
-  const counts = new Map<number, number>();
+  const power = rolledPowerBase(weapon, scenario);
+  return rollOutcomesForPower(power, profile);
+}
 
-  if (profile.dice === 2) {
-    const dieMin = profile.minPercent / 2;
-    const dieMax = profile.maxPercent / 2;
+export function rollOutcomesForPower(
+  powerInput: number,
+  profile: RandomProfile,
+): Array<{ rollPercent: number; rolledPower: number; count: number; probability: number }> {
+  const counts = new Map<number, number>();
+  const power = Math.max(0, Math.round(powerInput));
+
+  if (profile.absolute) {
+    const minPower = Math.floor(profile.minPercent);
+    const maxPower = Math.floor(profile.maxPercent);
+    for (let rolledPower = minPower; rolledPower <= maxPower; rolledPower += 1) {
+      counts.set(rolledPower, 1);
+    }
+  } else if (profile.dice === 2) {
+    const dieMin = Math.floor((power * profile.minPercent) / profile.dice / 100);
+    const dieMax = Math.floor((power * profile.maxPercent) / profile.dice / 100);
     for (let first = dieMin; first <= dieMax; first += 1) {
       for (let second = dieMin; second <= dieMax; second += 1) {
         const total = first + second;
@@ -154,19 +174,22 @@ export function rollOutcomes(
       }
     }
   } else {
-    for (let percent = profile.minPercent; percent <= profile.maxPercent; percent += 1) {
-      counts.set(percent, 1);
+    const minPower = Math.floor((power * profile.minPercent) / 100);
+    const maxPower = Math.floor((power * profile.maxPercent) / 100);
+    for (let rolledPower = minPower; rolledPower <= maxPower; rolledPower += 1) {
+      counts.set(rolledPower, 1);
     }
   }
 
   const total = [...counts.values()].reduce((sum, count) => sum + count, 0);
   return [...counts.entries()]
-    .map(([rollPercent, count]) => ({
-      rollPercent,
+    .map(([rolledPower, count]) => ({
+      rollPercent: power > 0 ? (rolledPower / power) * 100 : 0,
+      rolledPower,
       count,
       probability: count / total,
     }))
-    .sort((a, b) => a.rollPercent - b.rollPercent);
+    .sort((a, b) => a.rolledPower - b.rolledPower);
 }
 
 export function effectiveArmor(
@@ -236,15 +259,14 @@ export function expectedComponentDamage(
   const percent = weapon.damageModifierOverrides?.[component] ?? comp.percent;
   const randomized = weapon.damageRandomizedOverrides?.[component] ?? comp.randomized;
 
-  return rollOutcomes(weapon, damageTypes, randomProfiles).reduce((sum, outcome) => {
-    const rollMultiplier = outcome.rollPercent / 100;
+  return rollOutcomes(weapon, scenario, damageTypes, randomProfiles).reduce((sum, outcome) => {
     const baseDamage = component === "preArmor"
-      ? modifiedPower(weapon, scenario) * rollMultiplier
-      : damageAtRoll(
+      ? outcome.rolledPower
+      : damageFromRolledPower(
         weapon,
         scenario,
         armor,
-        rollMultiplier,
+        outcome.rolledPower,
         damageTypes,
       );
     return sum + expectedRawComponent(baseDamage, percent, !!randomized) * outcome.probability;
@@ -277,14 +299,13 @@ export function averageRollDamage(
   damageTypes: DamageType[],
   randomProfiles: RandomProfile[] = [],
 ): number {
-  const power = modifiedPower(weapon, scenario);
   const damageType = damageTypeFor(weapon, damageTypes);
-  const outcomes = rollOutcomes(weapon, damageTypes, randomProfiles);
+  const outcomes = rollOutcomes(weapon, scenario, damageTypes, randomProfiles);
   const averageRoll =
-    outcomes.reduce((sum, outcome) => sum + outcome.rollPercent * outcome.probability, 0) / 100;
+    outcomes.reduce((sum, outcome) => sum + outcome.rolledPower * outcome.probability, 0);
   return Math.max(
     0,
-    Math.max(0, power * averageRoll - effectiveArmor(weapon, scenario, armor, damageTypes)) *
+    Math.max(0, averageRoll - effectiveArmor(weapon, scenario, armor, damageTypes)) *
     (weapon.damageModifierOverrides?.hp ?? getDamageComponent(damageType, "hp").percent),
   );
 }
@@ -329,22 +350,54 @@ export function damageAtRoll(
   rollMultiplier: number,
   damageTypes: DamageType[],
 ): number {
-  const power = modifiedPower(weapon, scenario);
-  return Math.max(
-    0,
-    power * rollMultiplier - effectiveArmor(weapon, scenario, armor, damageTypes),
+  const power = rolledPowerBase(weapon, scenario);
+  return damageFromRolledPower(
+    weapon,
+    scenario,
+    armor,
+    Math.round(power * rollMultiplier),
+    damageTypes,
   );
 }
 
-function componentRollOutcomes(randomized: boolean): Array<{ multiplier: number; probability: number }> {
-  if (!randomized) {
-    return [{ multiplier: 1, probability: 1 }];
+export function damageFromRolledPower(
+  weapon: WeaponSystem,
+  scenario: Scenario,
+  armor: number,
+  rolledPower: number,
+  damageTypes: DamageType[],
+): number {
+  return Math.max(
+    0,
+    Math.trunc(rolledPower - effectiveArmor(weapon, scenario, armor, damageTypes)),
+  );
+}
+
+function componentRollOutcomes(
+  baseDamage: number,
+  percent: number,
+  randomized: boolean,
+): Array<{ damage: number; count: number; probability: number }> {
+  const damage = Math.max(0, Math.trunc(baseDamage));
+  if (percent <= 0 || damage <= 0) {
+    return [{ damage: 0, count: 1, probability: 1 }];
   }
 
-  const probability = 1 / 101;
-  return Array.from({ length: 101 }, (_, value) => ({
-    multiplier: value / 100,
-    probability,
+  if (!randomized) {
+    return [{ damage: Math.round(damage * percent), count: 1, probability: 1 }];
+  }
+
+  const counts = new Map<number, number>();
+  for (let roll = 0; roll <= damage; roll += 1) {
+    const rolledDamage = Math.round(roll * percent);
+    counts.set(rolledDamage, (counts.get(rolledDamage) ?? 0) + 1);
+  }
+
+  const total = damage + 1;
+  return [...counts.entries()].map(([rolledDamage, count]) => ({
+    damage: rolledDamage,
+    count,
+    probability: count / total,
   }));
 }
 
@@ -359,15 +412,12 @@ function expectedRawComponent(baseDamage: number, percent: number, randomized: b
     return 0;
   }
 
-  const outcomes = componentRollOutcomes(randomized);
-  return outcomes.reduce((sum, roll) => {
-    const value = Math.round(baseDamage * percent * roll.multiplier);
-    return sum + value * roll.probability;
-  }, 0);
+  return componentRollOutcomes(baseDamage, percent, randomized)
+    .reduce((sum, outcome) => sum + outcome.damage * outcome.probability, 0);
 }
 
 function scaledMoraleDamage(rawMoraleDamage: number, scenario: Scenario): number {
-  return Math.round(((110 - scenario.targetBravery) * rawMoraleDamage) / 100);
+  return Math.trunc(((110 - scenario.targetBravery) * rawMoraleDamage) / 100);
 }
 
 export function buildDamageComponentCurve(
@@ -404,14 +454,13 @@ export function buildDamageComponentCurve(
   const energyRandomized = weapon.damageRandomizedOverrides?.energy ?? energyComp.randomized;
   const manaRandomized = weapon.damageRandomizedOverrides?.mana ?? manaComp.randomized;
 
-  return rollOutcomes(weapon, damageTypes, randomProfiles).map((outcome) => {
+  return rollOutcomes(weapon, scenario, damageTypes, randomProfiles).map((outcome) => {
     cumulative += outcome.probability;
-    const rolledPower = modifiedPower(weapon, scenario) * (outcome.rollPercent / 100);
-    const postArmorDamage = damageAtRoll(
+    const postArmorDamage = damageFromRolledPower(
       weapon,
       scenario,
       armor,
-      outcome.rollPercent / 100,
+      outcome.rolledPower,
       damageTypes,
     );
     const hpDamage = expectedIntegerComponent(postArmorDamage, hpPercent, !!hpRandomized);
@@ -419,7 +468,7 @@ export function buildDamageComponentCurve(
     const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, !!moraleRandomized);
     const scaledMorale = scaledMoraleDamage(moraleDamage, scenario);
     const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, !!armorRandomized);
-    const preArmorDamage = expectedIntegerComponent(rolledPower, preArmorPercent, !!preArmorRandomized);
+    const preArmorDamage = expectedIntegerComponent(outcome.rolledPower, preArmorPercent, !!preArmorRandomized);
     const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, !!tuRandomized);
     const energyDamage = expectedIntegerComponent(postArmorDamage, energyPercent, !!energyRandomized);
     const manaDamage = expectedIntegerComponent(postArmorDamage, manaPercent, !!manaRandomized);
@@ -427,6 +476,7 @@ export function buildDamageComponentCurve(
     return {
       percentile: cumulative * 100,
       rollPercent: outcome.rollPercent,
+      rolledPower: outcome.rolledPower,
       hpDamage,
       stunDamage,
       moraleDamage,
@@ -450,11 +500,11 @@ export function buildDamageDistribution(
   randomProfiles: RandomProfile[] = [],
 ): DamageDistributionBucket[] {
   const counts = new Map<number, number>();
-  const outcomes = rollOutcomes(weapon, damageTypes, randomProfiles);
+  const outcomes = rollOutcomes(weapon, scenario, damageTypes, randomProfiles);
 
   for (const outcome of outcomes) {
     const damage = Math.round(
-      damageAtRoll(weapon, scenario, armor, outcome.rollPercent / 100, damageTypes),
+      damageFromRolledPower(weapon, scenario, armor, outcome.rolledPower, damageTypes),
     );
     counts.set(damage, (counts.get(damage) ?? 0) + outcome.count);
   }
@@ -506,32 +556,31 @@ export function buildDamageRollResults(
   const energyRandomized = weapon.damageRandomizedOverrides?.energy ?? energyComp.randomized;
   const manaRandomized = weapon.damageRandomizedOverrides?.mana ?? manaComp.randomized;
 
-  const hpRolls = componentRollOutcomes(!!hpRandomized);
-  const stunRolls = componentRollOutcomes(!!stunRandomized);
-
-  for (const outcome of rollOutcomes(weapon, damageTypes, randomProfiles)) {
-    const rolledPower = modifiedPower(weapon, scenario) * (outcome.rollPercent / 100);
-    const postArmorDamage = damageAtRoll(
+  for (const outcome of rollOutcomes(weapon, scenario, damageTypes, randomProfiles)) {
+    const postArmorDamage = damageFromRolledPower(
       weapon,
       scenario,
       armor,
-      outcome.rollPercent / 100,
+      outcome.rolledPower,
       damageTypes,
     );
+    const hpOutcomes = componentRollOutcomes(postArmorDamage, hpPercent, !!hpRandomized);
+    const stunOutcomes = componentRollOutcomes(postArmorDamage, stunPercent, !!stunRandomized);
 
-    for (const hpRoll of hpRolls) {
-      for (const stunRoll of stunRolls) {
-        const hpDamage = Math.round(postArmorDamage * hpPercent * hpRoll.multiplier);
-        const stunDamage = Math.round(postArmorDamage * stunPercent * stunRoll.multiplier);
+    for (const hpOutcome of hpOutcomes) {
+      for (const stunOutcome of stunOutcomes) {
+        const hpDamage = hpOutcome.damage;
+        const stunDamage = stunOutcome.damage;
         const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, !!moraleRandomized);
         const scaledMorale = scaledMoraleDamage(moraleDamage, scenario);
         const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, !!armorRandomized);
-        const preArmorDamage = expectedIntegerComponent(rolledPower, preArmorPercent, !!preArmorRandomized);
+        const preArmorDamage = expectedIntegerComponent(outcome.rolledPower, preArmorPercent, !!preArmorRandomized);
         const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, !!tuRandomized);
         const energyDamage = expectedIntegerComponent(postArmorDamage, energyPercent, !!energyRandomized);
         const manaDamage = expectedIntegerComponent(postArmorDamage, manaPercent, !!manaRandomized);
         results.push({
           rollPercent: outcome.rollPercent,
+          rolledPower: outcome.rolledPower,
           hpDamage,
           stunDamage,
           moraleDamage,
@@ -544,8 +593,8 @@ export function buildDamageRollResults(
           manaDamage,
           totalDamage: hpDamage + stunDamage,
           damage: hpDamage,
-          count: outcome.count,
-          probability: outcome.probability * hpRoll.probability * stunRoll.probability,
+          count: outcome.count * hpOutcome.count * stunOutcome.count,
+          probability: outcome.probability * hpOutcome.probability * stunOutcome.probability,
         });
       }
     }

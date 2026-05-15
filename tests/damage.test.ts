@@ -10,6 +10,7 @@ import {
   expectedPanicChance,
   expectedTotalDamage,
   panicChanceFromScaledMoraleDamage,
+  rollOutcomes,
 } from "../src/damage.ts";
 import { importOpenXcomItems } from "../src/rulImport.ts";
 import type { DamageType, RandomProfile, Scenario, WeaponSystem } from "../src/types.ts";
@@ -39,6 +40,14 @@ const standardProfile: RandomProfile = {
   minPercent: 0,
   maxPercent: 200,
   dice: 1,
+};
+
+const twoDiceProfile: RandomProfile = {
+  id: "0-200-2d",
+  label: "0-200 (2 dice)",
+  minPercent: 0,
+  maxPercent: 200,
+  dice: 2,
 };
 
 const flatHpType: DamageType = {
@@ -112,6 +121,34 @@ test("0-200 random profile averages back to power at zero armor before integer r
   assert.equal(Math.round(expected), 40);
 });
 
+test("primary RNG uses OpenXcom-style integer rolled power outcomes", () => {
+  const oddPowerWeapon: WeaponSystem = {
+    ...weapon,
+    basePower: 41,
+  };
+  const outcomes = rollOutcomes(oddPowerWeapon, scenario, [flatHpType], [standardProfile]);
+
+  assert.equal(outcomes[0].rolledPower, 0);
+  assert.equal(outcomes.at(-1)?.rolledPower, 82);
+  assert.equal(outcomes.length, 83);
+  assert.equal(outcomes.every((outcome) => Number.isInteger(outcome.rolledPower)), true);
+});
+
+test("two-dice primary RNG sums two integer 0-power rolls", () => {
+  const twoDiceWeapon = {
+    ...weapon,
+    randomProfileIdOverride: "0-200-2d",
+  };
+  const outcomes = rollOutcomes(twoDiceWeapon, scenario, [flatHpType], [twoDiceProfile]);
+  const byPower = new Map(outcomes.map((outcome) => [outcome.rolledPower, outcome]));
+
+  assert.equal(outcomes.length, 81);
+  assert.equal(outcomes.reduce((sum, outcome) => sum + outcome.count, 0), 1681);
+  assert.equal(byPower.get(0)?.count, 1);
+  assert.equal(byPower.get(40)?.count, 41);
+  assert.equal(byPower.get(80)?.count, 1);
+});
+
 test("power-scaled armor effectiveness uses 100% plus power percent", () => {
   const damageType: DamageType = {
     ...flatHpType,
@@ -121,6 +158,24 @@ test("power-scaled armor effectiveness uses 100% plus power percent", () => {
   assert.equal(armorEffectivenessModifier(weapon, scenario, [damageType]), 1.4);
   assert.equal(effectiveArmor(weapon, scenario, 10, [damageType]), 14);
   assert.equal(damageAtRoll(weapon, scenario, 10, 1, [damageType]), 26);
+});
+
+test("post-armor damage truncates like OpenXcom int assignment", () => {
+  const damageType: DamageType = {
+    ...flatHpType,
+    armorEffectiveness: 1.25,
+  };
+
+  assert.equal(damageAtRoll(weapon, scenario, 9, 1, [damageType]), 28);
+});
+
+test("post-armor truncation floors neither way, it truncates toward zero before the damage gate", () => {
+  const damageType: DamageType = {
+    ...flatHpType,
+    armorEffectiveness: 1.25,
+  };
+
+  assert.equal(damageAtRoll(weapon, scenario, 32, 1, [damageType]), 0);
 });
 
 test("weapon armor effectiveness override wins over damage type power scaling", () => {
@@ -150,7 +205,7 @@ test("ToArmorPre is tracked as pre-armor damage without changing current armor m
 
   assert.equal(effectiveArmor(toArmorPreWeapon, scenario, 10, [flatHpType]), 10);
   assert.equal(damageAtRoll(toArmorPreWeapon, scenario, 10, 1, [flatHpType]), 30);
-  assert.equal(expectedComponentDamage(toArmorPreWeapon, scenario, 10, [flatHpType], "preArmor", [flatProfile]), 17.524752475247524);
+  assert.equal(expectedComponentDamage(toArmorPreWeapon, scenario, 10, [flatHpType], "preArmor", [flatProfile]), 18.04878048780488);
 });
 
 test("expectedTotalDamage matches the full roll-result engine with randomized stun", () => {
@@ -165,6 +220,18 @@ test("expectedTotalDamage matches the full roll-result engine with randomized st
   const helper = expectedTotalDamage(weapon, scenario, 0, [damageType], [flatProfile]);
 
   assert.equal(helper, exact);
+});
+
+test("randomized components roll from zero to penetrating damage", () => {
+  const damageType: DamageType = {
+    ...flatHpType,
+    hpDamagePercent: 0,
+    stunDamagePercent: 0.25,
+    stunDamageRandomized: true,
+  };
+
+  assert.equal(expectedComponentDamage(weapon, scenario, 0, [damageType], "stun", [flatProfile]), 5.121951219512195);
+  assert.equal(expectedTotalDamage(weapon, scenario, 0, [damageType], [flatProfile]), 5.121951219512195);
 });
 
 test("non-HP damage components can be configured independently", () => {
@@ -203,6 +270,48 @@ test("panic chance derives from scaled morale damage and averages over rolls", (
   assert.equal(panicChanceFromScaledMoraleDamage(20), 0);
   assert.equal(panicChanceFromScaledMoraleDamage(120), 100);
   assert.equal(expectedPanicChance(moraleWeapon, scenario, 0, [damageType], [flatProfile]), 20);
+});
+
+test("scaled morale uses OpenXcom integer division instead of rounding", () => {
+  const damageType: DamageType = {
+    ...flatHpType,
+    hpDamagePercent: 0,
+    moraleDamagePercent: 1,
+  };
+  const moraleWeapon = { ...weapon, basePower: 20 };
+  const almostRoundingTarget = { ...scenario, targetBravery: 52 };
+  const result = buildDamageRollResults(moraleWeapon, almostRoundingTarget, 0, [damageType], [flatProfile])[0];
+
+  assert.equal(result.moraleDamage, 20);
+  assert.equal(result.scaledMoraleDamage, 11);
+});
+
+test("imports OpenXcom RandomType enum values into the matching local profiles", () => {
+  const expectedProfiles: Record<number, string> = {
+    1: "0-200",
+    2: "50-150",
+    3: "flat-power",
+    4: "fire-5-10",
+    5: "none",
+    6: "0-200-2d",
+    7: "50-200",
+    8: "0-200",
+    9: "50-150",
+  };
+
+  for (const [randomType, expectedProfile] of Object.entries(expectedProfiles)) {
+    const source = `
+items:
+  - type: STR_RANDOM_${randomType}
+    power: 20
+    damageType: 0
+    battleType: 2
+    damageAlter:
+      RandomType: ${randomType}
+`;
+    const imported = importOpenXcomItems(source, [flatHpType]);
+    assert.equal(imported.weapons[0].randomProfileIdOverride, expectedProfile);
+  }
 });
 
 test("imports powered OpenXcom items mapping to damage types and overrides", () => {
@@ -275,4 +384,5 @@ items:
   assert.equal(imported.weapons[0].damageTypeId, "4-laser");
   assert.equal(imported.weapons[0].armorEffectivenessOverride, 0.5);
   assert.equal(imported.weapons[0].damageModifierOverrides?.preArmor, 0.025);
+  assert.equal(imported.weapons[0].randomProfileIdOverride, "0-200-2d");
 });
