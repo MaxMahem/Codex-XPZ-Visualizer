@@ -34,7 +34,7 @@ export function percentileTooltip(
   const stack = visibleComponents.includes("hp") || visibleComponents.includes("stun")
     ? `Stack ${formatDamage((visibleComponents.includes("hp") ? result.hpDamage : 0) + (visibleComponents.includes("stun") ? result.stunDamage : 0))}. `
     : "";
-  return `${Math.round(result.percentile)}th percentile. ${stack}${visible}. Underlying roll: ${result.rollPercent}%.`;
+  return `${Math.round(result.percentile)}th percentile. ${stack}${visible}. Underlying roll: ${formatDamage(result.rolledPower)} power (${Math.round(result.rollPercent)}%).`;
 }
 
 export function weaponTooltip(
@@ -45,6 +45,9 @@ export function weaponTooltip(
   const damageType = damageTypeFor(weapon, damageTypes);
   const profile = randomProfileFor(weapon, damageTypes, randomProfiles);
   const [minRoll, maxRoll] = randomRange(weapon, damageTypes, randomProfiles);
+  const rollLabel = profile.absolute
+    ? `${Math.round(profile.minPercent)}-${Math.round(profile.maxPercent)} damage`
+    : `${formatPercent(minRoll)}-${formatPercent(maxRoll)}`;
   const armorEffectiveness = armorEffectivenessModifier(weapon, scenario, damageTypes);
   const armorEffectivenessSource =
     weapon.armorEffectivenessOverride !== undefined
@@ -73,7 +76,7 @@ export function weaponTooltip(
     `Base ${formatDamage(weapon.basePower)}, current power ${formatDamage(modifiedPower(weapon, scenario))}.`,
     `Damage bonus: ${damageBonusTooltip(weapon)}.`,
     `AP ${formatPercent(armorEffectiveness)} from ArmorEffectiveness (${armorEffectivenessSource}).`,
-    `Random profile ${profile.label} (${formatPercent(minRoll)}-${formatPercent(maxRoll)})${weapon.randomProfileIdOverride ? " (weapon override)" : ""}.`,
+    `Random profile ${profile.label} (${rollLabel})${weapon.randomProfileIdOverride ? " (weapon override)" : ""}.`,
     components ? `Components: ${components}.` : "Components: none.",
   ].join(" ");
 }

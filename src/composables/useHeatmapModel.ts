@@ -1,10 +1,10 @@
 import { computed } from "vue";
-import { rollOutcomes } from "../damage";
+import { rollOutcomesForPower } from "../damage";
 import { randomProfiles } from "../data";
 import { damageComponentOptions, useDamageTypesStore } from "../stores/damageTypesStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { heatmapMetrics, type HeatmapMetric, useUiStore } from "../stores/uiStore";
-import type { DamageComponentKey, WeaponSystem } from "../types";
+import type { DamageComponentKey } from "../types";
 
 export type HeatmapContourSegment = {
   x1: number;
@@ -44,17 +44,10 @@ export function useHeatmapModel() {
       energy: 1,
       mana: 1,
     };
-    const syntheticWeapon: WeaponSystem = {
-      id: "heatmap-preview",
-      name: "Heatmap Preview",
-      category: "Preview",
-      damageTypeId: damageTypesStore.selectedDamageType.id,
-      basePower: 0,
-      armorPenetration: 0,
-      damageBonus: [],
-      color: damageTypesStore.selectedDamageType.color,
-    };
-    const outcomes = rollOutcomes(syntheticWeapon, damageTypesStore.editableDamageTypes, randomProfiles);
+    const profile =
+      randomProfiles.find((randomProfile) => randomProfile.id === damageTypesStore.selectedDamageType.randomProfileId) ??
+      randomProfiles[0];
+    const outcomesByPower = Array.from({ length: width }, (_, power) => rollOutcomesForPower(power, profile));
     const componentSettings = damageComponentOptions.map((option) => ({
       key: option.key,
       percent: damageTypesStore.componentPercent(damageTypesStore.selectedDamageType, option.key),
@@ -70,11 +63,11 @@ export function useHeatmapModel() {
           ? scenarioStore.scenario.armorEffectiveness * (1 + power / 100)
           : fixedArmorEffectiveness;
 
-        for (const outcome of outcomes) {
-          const rolledPower = power * (outcome.rollPercent / 100);
+        for (const outcome of outcomesByPower[power]) {
+          const rolledPower = outcome.rolledPower;
           const postArmorDamage = Math.max(
             0,
-            rolledPower - armor * armorEffectiveness,
+            Math.trunc(rolledPower - armor * armorEffectiveness),
           );
           for (const setting of componentSettings) {
             const componentBaseDamage = setting.key === "preArmor" ? rolledPower : postArmorDamage;
@@ -222,7 +215,7 @@ export function useHeatmapModel() {
       return hpStunValues[index];
     }
     if (metric === "scaledMorale") {
-      return Math.round(((110 - scenarioStore.scenario.targetBravery) * values.morale[index]) / 100);
+      return Math.trunc(((110 - scenarioStore.scenario.targetBravery) * values.morale[index]) / 100);
     }
     if (metric === "armor") {
       return values.armor[index] + values.preArmor[index];
@@ -286,19 +279,20 @@ function expectedComponentFromPostArmor(
   percent: number,
   randomized: boolean,
 ): number {
-  if (postArmorDamage <= 0 || percent <= 0) {
+  const damage = Math.max(0, Math.trunc(postArmorDamage));
+  if (damage <= 0 || percent <= 0) {
     return 0;
   }
 
   if (!randomized) {
-    return Math.round(postArmorDamage * percent);
+    return Math.round(damage * percent);
   }
 
   let sum = 0;
-  for (let roll = 0; roll <= 100; roll += 1) {
-    sum += Math.round(postArmorDamage * percent * (roll / 100));
+  for (let roll = 0; roll <= damage; roll += 1) {
+    sum += Math.round(roll * percent);
   }
-  return sum / 101;
+  return sum / (damage + 1);
 }
 
 function heatmapX(power: number): number {

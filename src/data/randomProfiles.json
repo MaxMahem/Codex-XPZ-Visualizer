@@ -33,5 +33,20 @@
     "minPercent": 0,
     "maxPercent": 200,
     "dice": 2
+  },
+  {
+    "id": "none",
+    "label": "No random damage",
+    "minPercent": 0,
+    "maxPercent": 0,
+    "dice": 1
+  },
+  {
+    "id": "fire-5-10",
+    "label": "Fire 5-10",
+    "minPercent": 5,
+    "maxPercent": 10,
+    "dice": 1,
+    "absolute": true
   }
 ]

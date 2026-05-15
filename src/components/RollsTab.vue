@@ -55,11 +55,11 @@ function rollLegendTotal(component: DamageMetricKey): string {
     return `${formatAverage(rollStats.value.effectivePanicChance)}%`;
   }
   if (component === "morale") {
-    const scaled = Math.round(((110 - scenario.value.targetBravery) * rollExpectedComponents.value.morale) / 100);
+    const scaled = Math.trunc(((110 - scenario.value.targetBravery) * rollExpectedComponents.value.morale) / 100);
     return `${formatAverage(scaled)} (${formatAverage(rollExpectedComponents.value.morale)})`;
   }
   if (component === "scaledMorale") {
-    return formatAverage(Math.round(((110 - scenario.value.targetBravery) * rollExpectedComponents.value.morale) / 100));
+    return formatAverage(Math.trunc(((110 - scenario.value.targetBravery) * rollExpectedComponents.value.morale) / 100));
   }
   return formatAverage(rollExpectedComponents.value[component]);
 }

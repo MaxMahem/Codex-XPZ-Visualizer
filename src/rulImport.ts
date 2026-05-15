@@ -155,11 +155,15 @@ function parseRulItems(text: string): ParsedRulItem[] {
 
 
 const RANDOM_PROFILE_MAP: Record<number, string> = {
-  1: "50-150",
+  1: "0-200",
   2: "50-150",
-  3: "50-200",
-  4: "flat-power",
-  5: "0-200-2d",
+  3: "flat-power",
+  4: "fire-5-10",
+  5: "none",
+  6: "0-200-2d",
+  7: "50-200",
+  8: "0-200",
+  9: "50-150",
 };
 
 function randomProfileId(randomType: number): string | undefined {

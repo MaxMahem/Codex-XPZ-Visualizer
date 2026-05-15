@@ -87,6 +87,7 @@ export interface DamageDistributionBucket {
 
 export interface DamageRollResult {
   rollPercent: number;
+  rolledPower: number;
   hpDamage: number;
   stunDamage: number;
   moraleDamage: number;
@@ -106,6 +107,7 @@ export interface DamageRollResult {
 export interface DamageComponentCurvePoint {
   percentile: number;
   rollPercent: number;
+  rolledPower: number;
   hpDamage: number;
   stunDamage: number;
   moraleDamage: number;
@@ -125,4 +127,5 @@ export interface RandomProfile {
   minPercent: number;
   maxPercent: number;
   dice: number;
+  absolute?: boolean;
 }

@@ -92,7 +92,7 @@ function hoverTopDamage(point: DamageComponentCurvePoint): number {
 
 function tooltipRows(point: DamageComponentCurvePoint): string[] {
   const rows = [
-    `${Math.round(point.percentile)}% | Roll ${point.rollPercent}%`,
+    `${Math.round(point.percentile)}% | Roll ${formatDamage(point.rolledPower)} power (${Math.round(point.rollPercent)}%)`,
   ];
   if (componentVisible("hp") || componentVisible("stun")) {
     rows.push(`HP + Stun ${formatDamage(stackedDamage(point))}`);
