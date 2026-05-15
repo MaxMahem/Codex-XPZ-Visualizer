@@ -100,8 +100,6 @@ export function damageTypeFor(
   return damageTypes.find((damageType) => damageType.id === weapon.damageTypeId) ?? fallbackDamageType;
 }
 
-
-
 export function armorEffectivenessModifier(
   weapon: WeaponSystem,
   scenario: Scenario,
