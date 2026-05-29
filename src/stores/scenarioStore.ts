@@ -1,15 +1,13 @@
 import { defineStore } from "pinia";
-import { reactive, ref } from "vue";
+import { computed, reactive } from "vue";
 import { defaultScenario } from "../data";
-
-export type ScenarioTab = "user" | "target";
 
 export const useScenarioStore = defineStore('scenario', () => {
   const scenario = reactive({ ...defaultScenario });
-  const scenarioTab = ref<ScenarioTab>("user");
+  const currentArmor = computed(() => Math.round(scenario.armor));
 
   return {
     scenario,
-    scenarioTab,
+    currentArmor,
   };
 });

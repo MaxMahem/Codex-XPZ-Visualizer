@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
-import { storeToRefs } from "pinia";
-import { useUiStore } from "./stores/uiStore";
+import { ref } from "vue";
 import { useWeaponsStore } from "./stores/weaponsStore";
-import { useComparisonStore } from "./stores/comparisonStore";
-import { useInspectorStore } from "./stores/inspectorStore";
+import type { AppTab } from "./uiOptions";
 
 import ScenarioControls from "./components/ScenarioControls.vue";
 import CompareTab from "./components/CompareTab.vue";
@@ -13,22 +10,10 @@ import WeaponPanel from "./components/WeaponPanel.vue";
 import DamageTypesTab from "./components/DamageTypesTab.vue";
 import WeaponsTab from "./components/WeaponsTab.vue";
 
-const uiStore = useUiStore();
 const weaponsStore = useWeaponsStore();
-const comparisonStore = useComparisonStore();
-const inspectorStore = useInspectorStore();
-
-const { activeTab } = storeToRefs(uiStore);
-
-onMounted(() => {
-  // Initialize default UI state from weapons data
-  if (comparisonStore.selectedIds.length === 0) {
-    comparisonStore.selectedIds = weaponsStore.shippedWeapons.slice(0, 3).map(w => w.id);
-  }
-  if (!inspectorStore.focusedId) {
-    inspectorStore.focusedId = weaponsStore.shippedWeapons[0]?.id ?? "";
-  }
-});
+const activeTab = ref<AppTab>("compare");
+const selectedWeaponIds = ref<string[]>(weaponsStore.shippedWeapons.slice(0, 3).map((weapon) => weapon.id));
+const focusedWeaponId = ref(weaponsStore.shippedWeapons[0]?.id ?? "");
 </script>
 
 <template>
@@ -80,17 +65,32 @@ onMounted(() => {
         'single-column': activeTab === 'weapons' || activeTab === 'damage-types',
       }"
     >
-      <ScenarioControls v-if="activeTab === 'compare' || activeTab === 'weapons'" />
+      <ScenarioControls v-show="activeTab === 'compare' || activeTab === 'weapons'" />
 
-      <CompareTab v-if="activeTab === 'compare'" />
+      <CompareTab v-show="activeTab === 'compare'" :selectedWeaponIds="selectedWeaponIds" />
 
-      <RollsTab v-if="activeTab === 'weapons'" embedded />
+      <RollsTab
+        v-show="activeTab === 'weapons'"
+        embedded
+        :focusedWeaponId="focusedWeaponId"
+        @update:focusedWeaponId="focusedWeaponId = $event"
+      />
 
-      <WeaponPanel v-if="activeTab === 'compare'" />
+      <WeaponPanel
+        v-show="activeTab === 'compare'"
+        :selectedWeaponIds="selectedWeaponIds"
+        @update:selectedWeaponIds="selectedWeaponIds = $event"
+      />
 
-      <DamageTypesTab v-if="activeTab === 'damage-types'" />
+      <DamageTypesTab v-show="activeTab === 'damage-types'" />
 
-      <WeaponsTab v-if="activeTab === 'weapons'" />
+      <WeaponsTab
+        v-show="activeTab === 'weapons'"
+        :focusedWeaponId="focusedWeaponId"
+        :selectedWeaponIds="selectedWeaponIds"
+        @update:focusedWeaponId="focusedWeaponId = $event"
+        @update:selectedWeaponIds="selectedWeaponIds = $event"
+      />
     </section>
   </main>
 </template>

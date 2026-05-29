@@ -8,9 +8,14 @@ import ExpectedDamageChart from "./ExpectedDamageChart.vue";
 import { formatDamage, formatPercent } from "../utils/formatters";
 import { targetHpTooltip as makeTargetHpTooltip, weaponTooltip } from "../utils/tooltips";
 
+const props = defineProps<{
+  selectedWeaponIds: string[];
+}>();
+
 const scenarioStore = useScenarioStore();
 const damageTypesStore = useDamageTypesStore();
-const { focusedRows } = useVsArmorModel();
+const selectedWeaponIdsRef = computed(() => props.selectedWeaponIds);
+const { focusedRows } = useVsArmorModel(selectedWeaponIdsRef);
 
 const { scenario } = storeToRefs(scenarioStore);
 const { editableDamageTypes } = storeToRefs(damageTypesStore);
@@ -29,16 +34,12 @@ const targetHpTooltip = computed(() => makeTargetHpTooltip(scenario.value.hitPoi
           Expected Damage
         </h2>
       </div>
-      <div class="target-marker has-tip" tabindex="0" :data-tip="targetHpTooltip">
-        <span>Target HP</span>
-        <strong>{{ formatDamage(scenario.hitPoints) }}</strong>
-      </div>
     </div>
 
     <div class="chart-legend" aria-label="Chart legend">
       <span class="legend-item has-tip" tabindex="0" :data-tip="targetHpTooltip">
         <i class="legend-line hp"></i>
-        Target HP threshold
+        Target HP
       </span>
       <span
         class="legend-item has-tip"
@@ -46,11 +47,15 @@ const targetHpTooltip = computed(() => makeTargetHpTooltip(scenario.value.hitPoi
         data-tip="The vertical dashed line is the armor value used by the table and colored chart dots."
       >
         <i class="legend-line inspect"></i>
-        Inspected armor
+        Target Armor
       </span>
     </div>
 
-    <ExpectedDamageChart :targetHp="scenario.hitPoints" :targetHpTooltip="targetHpTooltip" />
+    <ExpectedDamageChart
+      :selectedWeaponIds="selectedWeaponIds"
+      :targetHp="scenario.hitPoints"
+      :targetHpTooltip="targetHpTooltip"
+    />
 
     <div class="results-table">
       <div class="table-row table-head">

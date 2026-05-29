@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { storeToRefs } from "pinia";
-import { useComparisonStore } from "../stores/comparisonStore";
-import { useInspectorStore } from "../stores/inspectorStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
 import { useDamageTypesStore, damageComponentOptions } from "../stores/damageTypesStore";
@@ -16,15 +14,19 @@ import PercentInput from "./PercentInput.vue";
 const scenarioStore = useScenarioStore();
 const weaponsStore = useWeaponsStore();
 const damageTypesStore = useDamageTypesStore();
-const inspectorStore = useInspectorStore();
-const comparisonStore = useComparisonStore();
+
+const props = defineProps<{
+  focusedWeaponId: string;
+  selectedWeaponIds: string[];
+}>();
+const emit = defineEmits<{
+  "update:focusedWeaponId": [id: string];
+  "update:selectedWeaponIds": [ids: string[]];
+}>();
 
 const {
-  importStatus,
   editableWeapons,
 } = storeToRefs(weaponsStore);
-
-const { focusedId } = storeToRefs(inspectorStore);
 
 const {
   editableDamageTypes,
@@ -35,6 +37,7 @@ const {
 } = storeToRefs(scenarioStore);
 
 const expandedWeapons = ref<Record<string, boolean>>({});
+const importStatus = ref("");
 
 function toggleWeaponDetails(id: string) {
   expandedWeapons.value[id] = !expandedWeapons.value[id];
@@ -42,27 +45,37 @@ function toggleWeaponDetails(id: string) {
 
 async function handleImport(event: Event) {
   const imported = await weaponsStore.importItemsFile(event);
+  importStatus.value = `Imported ${imported.length} powered items.`;
   if (imported.length > 0) {
-    inspectorStore.setFocus(imported[0].id);
-    // Auto-select imported weapons for comparison too
-    for (const w of imported) {
-      if (!comparisonStore.selectedIds.includes(w.id)) {
-        comparisonStore.toggleWeapon(w.id);
-      }
-    }
+    emit("update:focusedWeaponId", imported[0].id);
+    emit("update:selectedWeaponIds", [...new Set([...props.selectedWeaponIds, ...imported.map((weapon) => weapon.id)])]);
   }
 }
 
 function handleAddWeapon() {
   const id = weaponsStore.addWeapon();
-  inspectorStore.setFocus(id);
-  comparisonStore.toggleWeapon(id);
+  emit("update:focusedWeaponId", id);
+  toggleComparisonWeapon(id);
 }
 
 function handleClearWeapons() {
   weaponsStore.clearWeapons();
-  inspectorStore.setFocus("");
-  comparisonStore.clear();
+  importStatus.value = "Cleared all weapons/items. Damage type defaults are still available.";
+  emit("update:focusedWeaponId", "");
+  emit("update:selectedWeaponIds", []);
+}
+
+function focusWeapon(id: string): void {
+  emit("update:focusedWeaponId", id);
+}
+
+function toggleComparisonWeapon(id: string): void {
+  emit(
+    "update:selectedWeaponIds",
+    props.selectedWeaponIds.includes(id)
+      ? props.selectedWeaponIds.filter((selectedId) => selectedId !== id)
+      : [...props.selectedWeaponIds, id],
+  );
 }
 
 function effectivePercent(weapon: WeaponSystem, key: DamageComponentKey): number {
@@ -155,15 +168,15 @@ function bonusPreview(weapon: WeaponSystem): string {
         <template v-for="weapon in editableWeapons" :key="weapon.id">
           <div
           class="weapon-edit-row"
-          :class="{ active: focusedId === weapon.id }"
+          :class="{ active: focusedWeaponId === weapon.id }"
           role="row"
-          :aria-selected="focusedId === weapon.id"
+          :aria-selected="focusedWeaponId === weapon.id"
           tabindex="0"
-          @pointerdown="inspectorStore.setFocus(weapon.id)"
-          @click="inspectorStore.setFocus(weapon.id)"
-          @focusin.capture="inspectorStore.setFocus(weapon.id)"
-          @keydown.enter.prevent="inspectorStore.setFocus(weapon.id)"
-          @keydown.space.prevent="inspectorStore.setFocus(weapon.id)"
+          @pointerdown="focusWeapon(weapon.id)"
+          @click="focusWeapon(weapon.id)"
+          @focusin.capture="focusWeapon(weapon.id)"
+          @keydown.enter.prevent="focusWeapon(weapon.id)"
+          @keydown.space.prevent="focusWeapon(weapon.id)"
         >
           <span role="cell">
             <ColorPicker

@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, reactive, ref } from "vue";
+import { reactive } from "vue";
 import { damageTypes } from "../data";
 import defaultItemsRul from "../data/default-items.rul?raw";
 import { computeDamageBonus } from "../damage";
@@ -30,7 +30,6 @@ export const useWeaponsStore = defineStore('weapons', () => {
   };
 
   const editableWeapons = reactive<WeaponSystem[]>(shippedWeapons.map((weapon) => ({ ...weapon })));
-  const importStatus = ref("");
 
   function addWeapon(): string {
     const nextNumber = editableWeapons.length + 1;
@@ -51,7 +50,6 @@ export const useWeaponsStore = defineStore('weapons', () => {
 
   function clearWeapons(): void {
     editableWeapons.splice(0, editableWeapons.length);
-    importStatus.value = "Cleared all weapons/items. Damage type defaults are still available.";
   }
 
   function setWeaponModifiedPower(weapon: WeaponSystem, value: number): void {
@@ -91,7 +89,6 @@ export const useWeaponsStore = defineStore('weapons', () => {
     );
 
     editableWeapons.push(...imported.weapons);
-    importStatus.value = `Imported ${imported.weapons.length} powered items.`;
     input.value = "";
     return imported.weapons;
   }
@@ -147,7 +144,6 @@ export const useWeaponsStore = defineStore('weapons', () => {
     shippedWeapons,
     fallbackWeapon,
     editableWeapons,
-    importStatus,
     addWeapon,
     clearWeapons,
     setWeaponModifiedPower,

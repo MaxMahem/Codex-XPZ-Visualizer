@@ -1,4 +1,4 @@
-import { computed } from "vue";
+import { computed, type Ref } from "vue";
 import {
   armorEffectivenessModifier,
   buildCurve,
@@ -8,23 +8,20 @@ import {
   modifiedPower,
 } from "../damage";
 import { randomProfiles } from "../data";
-import { useComparisonStore } from "../stores/comparisonStore";
 import { useDamageTypesStore } from "../stores/damageTypesStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
 import type { DamagePoint, WeaponSystem } from "../types";
-import { useCurrentArmor } from "./useCurrentArmor";
 
-export function useVsArmorModel() {
+export function useVsArmorModel(selectedWeaponIds: Ref<readonly string[]>) {
   const scenarioStore = useScenarioStore();
   const damageTypesStore = useDamageTypesStore();
   const weaponsStore = useWeaponsStore();
-  const comparisonStore = useComparisonStore();
-  const { currentArmor } = useCurrentArmor();
+  const currentArmor = computed(() => scenarioStore.currentArmor);
 
   const selectedWeapons = computed(() =>
     weaponsStore.editableWeapons.filter((weapon) =>
-      comparisonStore.selectedIds.includes(weapon.id),
+      selectedWeaponIds.value.includes(weapon.id),
     ),
   );
 

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import { useComparisonStore } from "../stores/comparisonStore";
 import { useDamageTypesStore } from "../stores/damageTypesStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
@@ -9,12 +8,26 @@ import { weaponTooltip } from "../utils/tooltips";
 const damageTypesStore = useDamageTypesStore();
 const scenarioStore = useScenarioStore();
 const weaponsStore = useWeaponsStore();
-const comparisonStore = useComparisonStore();
+
+const props = defineProps<{
+  selectedWeaponIds: string[];
+}>();
+const emit = defineEmits<{
+  "update:selectedWeaponIds": [ids: string[]];
+}>();
 
 const { editableWeapons } = storeToRefs(weaponsStore);
-const { selectedIds } = storeToRefs(comparisonStore);
 const { editableDamageTypes } = storeToRefs(damageTypesStore);
 const { scenario } = storeToRefs(scenarioStore);
+
+function toggleWeapon(id: string): void {
+  emit(
+    "update:selectedWeaponIds",
+    props.selectedWeaponIds.includes(id)
+      ? props.selectedWeaponIds.filter((selectedId) => selectedId !== id)
+      : [...props.selectedWeaponIds, id],
+  );
+}
 </script>
 
 <template>
@@ -31,16 +44,15 @@ const { scenario } = storeToRefs(scenarioStore);
         v-for="weapon in editableWeapons"
         :key="weapon.id"
         class="weapon-toggle"
-        :class="{ active: selectedIds.includes(weapon.id) }"
+        :class="{ active: selectedWeaponIds.includes(weapon.id) }"
         type="button"
         :title="weaponTooltip(weapon, scenario, editableDamageTypes)"
         :data-tip="weaponTooltip(weapon, scenario, editableDamageTypes)"
-        @click="comparisonStore.toggleWeapon(weapon.id)"
+        @click="toggleWeapon(weapon.id)"
       >
         <span class="swatch" :style="{ backgroundColor: weapon.color }"></span>
         <span>
           <strong>{{ weapon.name }}</strong>
-          <small>{{ weapon.category }}</small>
         </span>
       </button>
     </div>

@@ -1,30 +1,33 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, toRef } from "vue";
 import { storeToRefs } from "pinia";
-import { useInspectorStore } from "../stores/inspectorStore";
 import { useRollDamageModel } from "../composables/useRollDamageModel";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { damageComponentOptions } from "../stores/damageTypesStore";
-import { useUiStore } from "../stores/uiStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
 import RollsChart from "./RollsChart.vue";
 import { formatPercent, formatAverage } from "../utils/formatters";
 import type { DamageMetricKey } from "../types";
 
-defineProps<{
+const props = defineProps<{
   embedded?: boolean;
+  focusedWeaponId: string;
+}>();
+const emit = defineEmits<{
+  "update:focusedWeaponId": [id: string];
 }>();
 
 const scenarioStore = useScenarioStore();
-const uiStore = useUiStore();
 const weaponsStore = useWeaponsStore();
-const inspectorStore = useInspectorStore();
-const { currentArmor, rollStats, rollWeapon, rollExpectedComponents } = useRollDamageModel();
+const visibleRollComponents = ref<DamageMetricKey[]>(["hp", "stun"]);
+const focusedWeaponIdRef = toRef(props, "focusedWeaponId");
+const { currentArmor, rollStats, rollWeapon, rollExpectedComponents } = useRollDamageModel(
+  focusedWeaponIdRef,
+  visibleRollComponents,
+);
 
 const { scenario } = storeToRefs(scenarioStore);
 const { editableWeapons } = storeToRefs(weaponsStore);
-const { focusedId } = storeToRefs(inspectorStore);
-const { visibleRollComponents } = storeToRefs(uiStore);
 const rollLegendComponents = computed(() =>
   [
     ...damageComponentOptions.filter((component) => component.key !== "preArmor"),
@@ -43,6 +46,14 @@ const componentSwatches: Partial<Record<DamageMetricKey, string>> = {
   energy: "energy-line",
   mana: "mana-line",
 };
+
+function toggleRollComponent(component: DamageMetricKey): void {
+  if (visibleRollComponents.value.includes(component)) {
+    visibleRollComponents.value = visibleRollComponents.value.filter((item) => item !== component);
+    return;
+  }
+  visibleRollComponents.value = [...visibleRollComponents.value, component];
+}
 
 function rollLegendTotal(component: DamageMetricKey): string {
   if (component === "armor") {
@@ -87,8 +98,8 @@ function rollLegendTotal(component: DamageMetricKey): string {
       >
         Weapon
         <select
-          v-model="focusedId"
-          @change="inspectorStore.setFocus(($event.target as HTMLSelectElement).value)"
+          :value="focusedWeaponId"
+          @change="emit('update:focusedWeaponId', ($event.target as HTMLSelectElement).value)"
         >
           <option v-for="weapon in editableWeapons" :key="weapon.id" :value="weapon.id">
             {{ weapon.name }}
@@ -129,7 +140,7 @@ function rollLegendTotal(component: DamageMetricKey): string {
         :class="{ inactive: !visibleRollComponents.includes(component.key) }"
         type="button"
         :aria-pressed="visibleRollComponents.includes(component.key)"
-        @click="uiStore.toggleRollComponent(component.key)"
+        @click="toggleRollComponent(component.key)"
         tabindex="0"
         :data-tip="component.key === 'hp'
           ? 'Toggle HP damage. HP forms the base filled area when visible.'
@@ -153,6 +164,10 @@ function rollLegendTotal(component: DamageMetricKey): string {
       </button>
     </div>
 
-    <RollsChart :targetHp="scenario.hitPoints" />
+    <RollsChart
+      :focusedWeaponId="focusedWeaponId"
+      :targetHp="scenario.hitPoints"
+      :visibleRollComponents="visibleRollComponents"
+    />
   </section>
 </template>

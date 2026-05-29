@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
+import { computed, ref } from "vue";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useDamageTypesStore, damageComponentOptions } from "../stores/damageTypesStore";
-import { useUiStore, heatmapMetrics } from "../stores/uiStore";
+import { heatmapMetrics, type HeatmapMetric } from "../uiOptions";
 import { randomProfiles } from "../data";
 import type { WeaponSystem } from "../types";
 import { randomProfileFor } from "../damage";
@@ -14,7 +15,7 @@ import HeatmapChart from "./HeatmapChart.vue";
 
 const scenarioStore = useScenarioStore();
 const damageTypesStore = useDamageTypesStore();
-const uiStore = useUiStore();
+const heatmapMetric = ref<HeatmapMetric>("hp");
 
 const {
   scenario,
@@ -23,14 +24,26 @@ const {
 const {
   editableDamageTypes,
   customDamageTypes,
-  selectedDamageTypeId,
-  selectedDamageType,
-  isCustomSelected,
 } = storeToRefs(damageTypesStore);
 
-const {
-  heatmapMetric,
-} = storeToRefs(uiStore);
+const selectedDamageTypeId = ref(editableDamageTypes.value[0]?.id ?? "");
+const selectedDamageType = computed(
+  () =>
+    editableDamageTypes.value.find((damageType) => damageType.id === selectedDamageTypeId.value) ??
+    editableDamageTypes.value[0],
+);
+const isCustomSelected = computed(() =>
+  customDamageTypes.value.some((damageType) => damageType.id === selectedDamageTypeId.value),
+);
+
+function addDamageType(): void {
+  selectedDamageTypeId.value = damageTypesStore.addDamageType();
+}
+
+function removeSelectedDamageType(): void {
+  damageTypesStore.removeDamageType(selectedDamageType.value.id);
+  selectedDamageTypeId.value = editableDamageTypes.value[0]?.id ?? "";
+}
 </script>
 
 <template>
@@ -63,7 +76,7 @@ const {
           class="add-button has-tip"
           type="button"
           data-tip="Create a new editable damage type using neutral defaults."
-          @click="damageTypesStore.addDamageType"
+          @click="addDamageType"
         >
           Add Damage Type
         </button>
@@ -72,7 +85,7 @@ const {
           class="remove-button has-tip"
           type="button"
           data-tip="Remove this custom damage type."
-          @click="damageTypesStore.removeDamageType(selectedDamageType.id)"
+          @click="removeSelectedDamageType"
         >
           Remove
         </button>
@@ -113,7 +126,7 @@ const {
           <PercentInput
             :modelValue="selectedDamageType.armorEffectiveness"
             :disabled="!isCustomSelected || selectedDamageType.armorEffectivenessScalesWithPower"
-            @update:modelValue="damageTypesStore.setArmorEffectiveness($event ?? 0)"
+            @update:modelValue="damageTypesStore.setArmorEffectiveness(selectedDamageType.id, $event ?? 0)"
           />
         </label>
         <label
@@ -162,14 +175,14 @@ const {
             :ariaLabel="`${component.label} damage percent`"
             :modelValue="damageTypesStore.componentPercent(selectedDamageType, component.key)"
             :disabled="!isCustomSelected"
-            @update:modelValue="damageTypesStore.setComponentPercent(component.key, $event ?? 0)"
+            @update:modelValue="damageTypesStore.setComponentPercent(selectedDamageType.id, component.key, $event ?? 0)"
           />
           <label class="checkbox-label compact-checkbox" :class="{ disabled: !isCustomSelected }">
             <input
               :checked="damageTypesStore.componentRandomized(selectedDamageType, component.key)"
               type="checkbox"
               :disabled="!isCustomSelected"
-              @change="damageTypesStore.setComponentRandomized(component.key, ($event.target as HTMLInputElement).checked)"
+              @change="damageTypesStore.setComponentRandomized(selectedDamageType.id, component.key, ($event.target as HTMLInputElement).checked)"
             />
             <span>Roll</span>
           </label>
@@ -204,7 +217,7 @@ const {
           </div>
         </div>
       </div>
-      <HeatmapChart />
+      <HeatmapChart :heatmapMetric="heatmapMetric" :damageType="selectedDamageType" />
     </section>
 
     <div class="damage-type-grid">

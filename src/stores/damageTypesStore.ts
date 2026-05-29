@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { computed, reactive, ref } from "vue";
+import { computed, reactive } from "vue";
 import { damageTypes } from "../data";
 import type { DamageComponentKey, DamageType } from "../types";
 
@@ -23,19 +23,7 @@ export const useDamageTypesStore = defineStore('damageTypes', () => {
 
   const allDamageTypes = computed(() => [...baseDamageTypes, ...customDamageTypes]);
   
-  const selectedDamageTypeId = ref(baseDamageTypes[0].id);
-
-  const selectedDamageType = computed(
-    () =>
-      allDamageTypes.value.find((dt) => dt.id === selectedDamageTypeId.value) ??
-      baseDamageTypes[0],
-  );
-
-  const isCustomSelected = computed(() => 
-    customDamageTypes.some(dt => dt.id === selectedDamageTypeId.value)
-  );
-
-  function addDamageType(): void {
+  function addDamageType(): string {
     const nextNumber = allDamageTypes.value.length + 1;
     const id = `custom-${Date.now()}`;
     customDamageTypes.push({
@@ -56,30 +44,28 @@ export const useDamageTypesStore = defineStore('damageTypes', () => {
       randomProfileId: "0-200",
       color: "#6f7f90",
     });
-    selectedDamageTypeId.value = id;
+    return id;
   }
 
   function removeDamageType(id: string): void {
     const index = customDamageTypes.findIndex(dt => dt.id === id);
     if (index !== -1) {
       customDamageTypes.splice(index, 1);
-      if (selectedDamageTypeId.value === id) {
-        selectedDamageTypeId.value = baseDamageTypes[0].id;
-      }
     }
   }
 
-  // Helper to get mutable version of selected type (only if it's custom)
-  function getMutableSelected() {
-    if (!isCustomSelected.value) {
-      console.warn(`[DamageTypesStore] Attempted to modify immutable base damage type: ${selectedDamageType.value.name}`);
+  function getMutableDamageType(id: string) {
+    const target = customDamageTypes.find(dt => dt.id === id);
+    if (!target) {
+      const damageType = allDamageTypes.value.find((dt) => dt.id === id);
+      console.warn(`[DamageTypesStore] Attempted to modify immutable base damage type: ${damageType?.name ?? id}`);
       return null;
     }
-    return customDamageTypes.find(dt => dt.id === selectedDamageTypeId.value);
+    return target;
   }
 
-  function setArmorEffectiveness(value: number): void {
-    const target = getMutableSelected();
+  function setArmorEffectiveness(id: string, value: number): void {
+    const target = getMutableDamageType(id);
     if (target) target.armorEffectiveness = (Number.isFinite(value) ? value : 0) / 100;
   }
 
@@ -87,8 +73,8 @@ export const useDamageTypesStore = defineStore('damageTypes', () => {
     return damageType.damageComponents[component].percent;
   }
 
-  function setComponentPercent(component: DamageComponentKey, value: number): void {
-    const target = getMutableSelected();
+  function setComponentPercent(id: string, component: DamageComponentKey, value: number): void {
+    const target = getMutableDamageType(id);
     if (target) target.damageComponents[component].percent = (Number.isFinite(value) ? value : 0) / 100;
   }
 
@@ -96,17 +82,14 @@ export const useDamageTypesStore = defineStore('damageTypes', () => {
     return !!damageType.damageComponents[component].randomized;
   }
 
-  function setComponentRandomized(component: DamageComponentKey, value: boolean): void {
-    const target = getMutableSelected();
+  function setComponentRandomized(id: string, component: DamageComponentKey, value: boolean): void {
+    const target = getMutableDamageType(id);
     if (target) target.damageComponents[component].randomized = value;
   }
 
   return {
     editableDamageTypes: allDamageTypes,
     customDamageTypes,
-    selectedDamageTypeId,
-    selectedDamageType,
-    isCustomSelected,
     addDamageType,
     removeDamageType,
     setArmorEffectiveness,

@@ -10,7 +10,6 @@ import type { DamagePoint } from "../types";
 
 const damageTypesStore = useDamageTypesStore();
 const scenarioStore = useScenarioStore();
-const { selectedWeapons, chartSeries, maxExpectedDamage, weaponAtArmor } = useVsArmorModel();
 
 const { editableDamageTypes } = storeToRefs(damageTypesStore);
 const { scenario } = storeToRefs(scenarioStore);
@@ -18,9 +17,12 @@ const { scenario } = storeToRefs(scenarioStore);
 const hoveredArmor = ref<number | null>(null);
 
 const props = defineProps<{
+  selectedWeaponIds: string[];
   targetHp: number;
   targetHpTooltip: string;
 }>();
+const selectedWeaponIdsRef = computed(() => props.selectedWeaponIds);
+const { selectedWeapons, chartSeries, maxExpectedDamage, weaponAtArmor } = useVsArmorModel(selectedWeaponIdsRef);
 
 function scaleX(armor: number): number {
   const width = 760;

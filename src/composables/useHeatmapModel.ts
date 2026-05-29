@@ -1,10 +1,10 @@
-import { computed } from "vue";
+import { computed, type Ref } from "vue";
 import { rollOutcomesForPower } from "../damage";
 import { randomProfiles } from "../data";
-import { damageComponentOptions, useDamageTypesStore } from "../stores/damageTypesStore";
+import { damageComponentOptions } from "../stores/damageTypesStore";
 import { useScenarioStore } from "../stores/scenarioStore";
-import { heatmapMetrics, type HeatmapMetric, useUiStore } from "../stores/uiStore";
-import type { DamageComponentKey } from "../types";
+import { heatmapMetrics, type HeatmapMetric } from "../uiOptions";
+import type { DamageComponentKey, DamageType } from "../types";
 
 export type HeatmapContourSegment = {
   x1: number;
@@ -13,10 +13,8 @@ export type HeatmapContourSegment = {
   y2: number;
 };
 
-export function useHeatmapModel() {
+export function useHeatmapModel(damageType: Ref<DamageType>, heatmapMetric: Ref<HeatmapMetric>) {
   const scenarioStore = useScenarioStore();
-  const damageTypesStore = useDamageTypesStore();
-  const uiStore = useUiStore();
 
   const heatmapData = computed(() => {
     const width = 151;
@@ -45,21 +43,21 @@ export function useHeatmapModel() {
       mana: 1,
     };
     const profile =
-      randomProfiles.find((randomProfile) => randomProfile.id === damageTypesStore.selectedDamageType.randomProfileId) ??
+      randomProfiles.find((randomProfile) => randomProfile.id === damageType.value.randomProfileId) ??
       randomProfiles[0];
     const outcomesByPower = Array.from({ length: width }, (_, power) => rollOutcomesForPower(power, profile));
     const componentSettings = damageComponentOptions.map((option) => ({
       key: option.key,
-      percent: damageTypesStore.componentPercent(damageTypesStore.selectedDamageType, option.key),
-      randomized: damageTypesStore.componentRandomized(damageTypesStore.selectedDamageType, option.key),
+      percent: damageType.value.damageComponents[option.key].percent,
+      randomized: !!damageType.value.damageComponents[option.key].randomized,
     }));
     const fixedArmorEffectiveness =
-      scenarioStore.scenario.armorEffectiveness * damageTypesStore.selectedDamageType.armorEffectiveness;
+      scenarioStore.scenario.armorEffectiveness * damageType.value.armorEffectiveness;
 
     for (let armor = 0; armor < height; armor += 1) {
       for (let power = 0; power < width; power += 1) {
         const index = armor * width + power;
-        const armorEffectiveness = damageTypesStore.selectedDamageType.armorEffectivenessScalesWithPower
+        const armorEffectiveness = damageType.value.armorEffectivenessScalesWithPower
           ? scenarioStore.scenario.armorEffectiveness * (1 + power / 100)
           : fixedArmorEffectiveness;
 
@@ -93,7 +91,7 @@ export function useHeatmapModel() {
     return { width, height, values, hpStunValues, maxValues };
   });
 
-  const heatmapMaxDamage = computed(() => heatmapData.value.maxValues[uiStore.heatmapMetric]);
+  const heatmapMaxDamage = computed(() => heatmapData.value.maxValues[heatmapMetric.value]);
 
   const heatmapImageHref = computed(() => {
     const data = heatmapData.value;
@@ -126,8 +124,7 @@ export function useHeatmapModel() {
     return canvas.toDataURL("image/png");
   });
 
-  const inspectedHeatmapCell = computed(() => {
-    const hover = uiStore.heatmapHover ?? { armor: 50, power: 75 };
+  function lookupCell(hover: { armor: number; power: number }) {
     const armor = Math.max(0, Math.min(100, Math.round(hover.armor)));
     const power = Math.max(0, Math.min(150, Math.round(hover.power)));
     const index = armor * heatmapData.value.width + power;
@@ -142,7 +139,7 @@ export function useHeatmapModel() {
       expectedMetric,
       expectedTotal: expectedHp + expectedStun,
     };
-  });
+  }
 
   const heatmapHpContour = computed<HeatmapContourSegment[]>(() => {
     const data = heatmapData.value;
@@ -227,7 +224,7 @@ export function useHeatmapModel() {
     return heatmapMetricValue(
       heatmapData.value.values,
       heatmapData.value.hpStunValues,
-      uiStore.heatmapMetric,
+      heatmapMetric.value,
       index,
     );
   }
@@ -270,7 +267,7 @@ export function useHeatmapModel() {
     heatmapHpContour,
     heatmapImageHref,
     heatmapMaxDamage,
-    inspectedHeatmapCell,
+    lookupCell,
   };
 }
 

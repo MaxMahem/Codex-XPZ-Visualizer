@@ -1,4 +1,4 @@
-import { computed } from "vue";
+import { computed, type Ref } from "vue";
 import {
   buildDamageComponentCurve,
   buildDamageRollResults,
@@ -8,25 +8,24 @@ import {
 } from "../damage";
 import { randomProfiles } from "../data";
 import { useDamageTypesStore } from "../stores/damageTypesStore";
-import { useInspectorStore } from "../stores/inspectorStore";
 import { useScenarioStore } from "../stores/scenarioStore";
-import { useUiStore } from "../stores/uiStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
-import { useCurrentArmor } from "./useCurrentArmor";
 import type { DamageComponentCurvePoint, DamageMetricKey } from "../types";
 
-export function useRollDamageModel() {
+export function useRollDamageModel(
+  focusedWeaponId: Ref<string>,
+  visibleRollComponents: Ref<DamageMetricKey[]>,
+  rollHoverPercentile: Ref<number | null> = computed(() => null),
+) {
   const scenarioStore = useScenarioStore();
   const damageTypesStore = useDamageTypesStore();
   const weaponsStore = useWeaponsStore();
-  const inspectorStore = useInspectorStore();
-  const uiStore = useUiStore();
-  const { currentArmor } = useCurrentArmor();
+  const currentArmor = computed(() => scenarioStore.currentArmor);
 
   const rollWeapon = computed(
     () =>
       weaponsStore.editableWeapons.find(
-        (weapon) => weapon.id === inspectorStore.focusedId,
+        (weapon) => weapon.id === focusedWeaponId.value,
       ) ??
       weaponsStore.editableWeapons[0] ??
       weaponsStore.fallbackWeapon,
@@ -77,7 +76,7 @@ export function useRollDamageModel() {
     if (points.length === 0) {
       return null;
     }
-    const percentile = uiStore.rollHoverPercentile ?? 50;
+    const percentile = rollHoverPercentile.value ?? 50;
     return points.reduce((closest, point) =>
       Math.abs(point.percentile - percentile) < Math.abs(closest.percentile - percentile)
         ? point
@@ -87,7 +86,7 @@ export function useRollDamageModel() {
 
   const rollStats = computed(() => {
     const results = rollResults.value;
-    const damageComponents = uiStore.visibleRollComponents.filter((component) => component !== "panicChance");
+    const damageComponents = visibleRollComponents.value.filter((component) => component !== "panicChance");
     const damages = componentCurve.value.flatMap((result) => [
       result.totalDamage,
       ...damageComponents.map((component) => visibleComponentDamage(result, component)),

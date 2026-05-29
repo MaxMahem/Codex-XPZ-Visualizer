@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import { storeToRefs } from "pinia";
-import { useCurrentArmor } from "../composables/useCurrentArmor";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { formatDamage } from "../utils/formatters";
 
-const scenarioStore = useScenarioStore();
-const { currentArmor } = useCurrentArmor();
+type ScenarioTab = "user" | "target";
 
-const { scenario, scenarioTab } = storeToRefs(scenarioStore);
+const scenarioStore = useScenarioStore();
+const scenarioTab = ref<ScenarioTab>("user");
+
+const { scenario, currentArmor } = storeToRefs(scenarioStore);
 </script>
 
 <template>

@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import { storeToRefs } from "pinia";
+import { ref, toRef } from "vue";
 import { useRollDamageModel } from "../composables/useRollDamageModel";
-import { useUiStore } from "../stores/uiStore";
 import { formatDamage } from "../utils/formatters";
 import { percentileTooltip } from "../utils/tooltips";
 import type { DamageComponentCurvePoint, DamageMetricKey } from "../types";
 
-const uiStore = useUiStore();
-const { rollWeapon, rollStats, componentCurve, inspectedCurvePoint } = useRollDamageModel();
-
-const { rollHoverPercentile, visibleRollComponents } = storeToRefs(uiStore);
-
 const props = defineProps<{
+  focusedWeaponId: string;
   targetHp: number;
+  visibleRollComponents: DamageMetricKey[];
 }>();
+const rollHoverPercentile = ref<number | null>(null);
+const focusedWeaponIdRef = toRef(props, "focusedWeaponId");
+const visibleRollComponentsRef = toRef(props, "visibleRollComponents");
+const { rollWeapon, rollStats, componentCurve, inspectedCurvePoint } = useRollDamageModel(
+  focusedWeaponIdRef,
+  visibleRollComponentsRef,
+  rollHoverPercentile,
+);
 
 function rollX(percentile: number): number {
   const width = 760;
@@ -74,7 +78,7 @@ function componentDamage(result: DamageComponentCurvePoint, component: DamageMet
 }
 
 function componentVisible(component: DamageMetricKey): boolean {
-  return visibleRollComponents.value.includes(component);
+  return props.visibleRollComponents.includes(component);
 }
 
 function stackedDamage(point: DamageComponentCurvePoint): number {
@@ -82,7 +86,7 @@ function stackedDamage(point: DamageComponentCurvePoint): number {
 }
 
 function hoverTopDamage(point: DamageComponentCurvePoint): number {
-  const visibleDamages = visibleRollComponents.value.map((component) =>
+  const visibleDamages = props.visibleRollComponents.map((component) =>
     component === "hp" || component === "stun"
       ? stackedDamage(point)
       : componentDamage(point, component),
@@ -97,7 +101,7 @@ function tooltipRows(point: DamageComponentCurvePoint): string[] {
   if (componentVisible("hp") || componentVisible("stun")) {
     rows.push(`HP + Stun ${formatDamage(stackedDamage(point))}`);
   }
-  for (const component of visibleRollComponents.value) {
+  for (const component of props.visibleRollComponents) {
     if (component === "morale") {
       rows.push(`Morale ${formatDamage(point.scaledMoraleDamage)} (${formatDamage(point.moraleDamage)} raw)`);
     } else if (component === "panicChance") {
