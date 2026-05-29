@@ -1,5 +1,15 @@
 import { parse } from "yaml";
-import type { DamageType, DamageBonusEntry, DamageBonusStat, WeaponSystem, DamageComponentKey } from "./types";
+import type {
+  ArmorDefinition,
+  DamageType,
+  DamageBonusEntry,
+  DamageBonusStat,
+  WeaponSystem,
+  DamageComponentKey,
+  RuleUnitStats,
+  TranslationMap,
+  UnitDefinition,
+} from "./types";
 
 type Scalar = string | number | boolean;
 type YamlRecord = Record<string, unknown>;
@@ -11,12 +21,39 @@ const VALID_BONUS_STATS = new Set<string>([
 
 type ParsedRulItem = {
   type: string;
+  nameKey?: string;
   power?: number;
   damageType?: number | string;
   battleType?: number;
   clipSize?: number;
   damageAlter: Record<string, Scalar>;
   damageBonus: Record<string, unknown>;
+};
+
+type ParsedRulUnit = {
+  type: string;
+  nameKey?: string;
+  armorId?: string;
+  stats: RuleUnitStats;
+};
+
+type ParsedRulSoldier = {
+  type: string;
+  nameKey?: string;
+  armorId?: string;
+  minStats: RuleUnitStats;
+  maxStats: RuleUnitStats;
+};
+
+type ParsedRulArmor = {
+  type: string;
+  nameKey?: string;
+  frontArmor?: number;
+  sideArmor?: number;
+  rearArmor?: number;
+  underArmor?: number;
+  damageModifier: number[];
+  unitTypes: string[];
 };
 
 type ImportResult = {
@@ -69,7 +106,11 @@ function parseDamageBonusEntries(raw: Record<string, unknown>): DamageBonusEntry
   return entries;
 }
 
-export function importOpenXcomItems(text: string, defaultDamageTypes: DamageType[]): ImportResult {
+export function importOpenXcomItems(
+  text: string,
+  defaultDamageTypes: DamageType[],
+  translations: TranslationMap = {},
+): ImportResult {
   const items = parseRulItems(text).filter(
     (item) =>
       Number.isFinite(item.power) &&
@@ -110,7 +151,8 @@ export function importOpenXcomItems(text: string, defaultDamageTypes: DamageType
 
     weapons.push({
       id: uniqueId(`rul-${item.type.toLowerCase()}`),
-      name: cleanRuleName(item.type),
+      sourceType: item.type,
+      name: displayName(item.nameKey ?? item.type, translations),
       category: item.battleType === 2 || item.clipSize !== undefined ? "Ammo" : "Item",
       damageTypeId,
       basePower: Math.round(item.power ?? 0),
@@ -127,6 +169,77 @@ export function importOpenXcomItems(text: string, defaultDamageTypes: DamageType
   return { weapons };
 }
 
+export function importOpenXcomUnits(text: string, translations: TranslationMap = {}): UnitDefinition[] {
+  return parseRulUnits(text).map((unit) => ({
+    id: uniqueId(`unit-${unit.type}`),
+    type: unit.type,
+    name: displayName(unit.nameKey ?? unit.type, translations),
+    armorId: unit.armorId,
+    stats: unit.stats,
+    presetKind: "unit",
+  }));
+}
+
+export function importOpenXcomSoldiers(text: string, translations: TranslationMap = {}): UnitDefinition[] {
+  return parseRulSoldiers(text).flatMap((soldier) => {
+    const baseName = displayName(soldier.nameKey ?? soldier.type, translations);
+    const baseId = `soldier-${soldier.type}`;
+
+    return [
+      {
+        id: uniqueId(`${baseId}-average`),
+        type: soldier.type,
+        name: `${baseName} (Average)`,
+        armorId: soldier.armorId,
+        stats: averageStats(soldier.minStats, soldier.maxStats),
+        presetKind: "soldier-average" as const,
+      },
+      {
+        id: uniqueId(`${baseId}-min`),
+        type: soldier.type,
+        name: `${baseName} (Min)`,
+        armorId: soldier.armorId,
+        stats: soldier.minStats,
+        presetKind: "soldier-min" as const,
+      },
+      {
+        id: uniqueId(`${baseId}-max`),
+        type: soldier.type,
+        name: `${baseName} (Max)`,
+        armorId: soldier.armorId,
+        stats: soldier.maxStats,
+        presetKind: "soldier-max" as const,
+      },
+    ];
+  });
+}
+
+export function importOpenXcomArmors(text: string, translations: TranslationMap = {}): ArmorDefinition[] {
+  return parseRulArmors(text).map((armor) => ({
+    id: armor.type,
+    type: armor.type,
+    name: displayName(armor.nameKey ?? armor.type, translations),
+    frontArmor: Math.round(armor.frontArmor ?? 0),
+    sideArmor: Math.round(armor.sideArmor ?? 0),
+    rearArmor: Math.round(armor.rearArmor ?? 0),
+    underArmor: Math.round(armor.underArmor ?? 0),
+    damageModifier: armor.damageModifier,
+    unitTypes: armor.unitTypes.length > 0 ? armor.unitTypes : undefined,
+  }));
+}
+
+export function importOpenXcomTranslations(text: string): TranslationMap {
+  const document = parse(text, { prettyErrors: true, maxAliasCount: -1 }) as YamlRecord | null;
+  if (!document) return {};
+  const root = isRecord(document["en-US"]) ? document["en-US"] : document;
+
+  return Object.fromEntries(
+    Object.entries(root).flatMap(([key, value]) =>
+      typeof value === "string" ? [[key, value]] : [],
+    ),
+  );
+}
+
 function parseRulItems(text: string): ParsedRulItem[] {
   const document = parse(text, { prettyErrors: true, maxAliasCount: -1 }) as YamlRecord | null;
   const rawItems = Array.isArray(document?.items) ? document.items : [];
@@ -141,12 +254,78 @@ function parseRulItems(text: string): ParsedRulItem[] {
     return [
       {
         type: rawItem.type,
+        nameKey: typeof rawItem.name === "string" ? rawItem.name : undefined,
         power: numberOrUndefined(rawItem.power),
         damageType: scalarOrUndefined(rawItem.damageType) as number | string | undefined,
         battleType: numberOrUndefined(rawItem.battleType),
         clipSize: numberOrUndefined(rawItem.clipSize),
         damageAlter,
         damageBonus,
+      },
+    ];
+  });
+}
+
+function parseRulUnits(text: string): ParsedRulUnit[] {
+  const document = parse(text, { prettyErrors: true, maxAliasCount: -1 }) as YamlRecord | null;
+  const rawUnits = Array.isArray(document?.units) ? document.units : [];
+
+  return rawUnits.flatMap((rawUnit) => {
+    if (!isRecord(rawUnit) || typeof rawUnit.type !== "string") {
+      return [];
+    }
+
+    return [
+      {
+        type: rawUnit.type,
+        nameKey: typeof rawUnit.name === "string" ? rawUnit.name : undefined,
+        armorId: typeof rawUnit.armor === "string" ? rawUnit.armor : undefined,
+        stats: statsRecord(rawUnit.stats),
+      },
+    ];
+  });
+}
+
+function parseRulSoldiers(text: string): ParsedRulSoldier[] {
+  const document = parse(text, { prettyErrors: true, maxAliasCount: -1 }) as YamlRecord | null;
+  const rawSoldiers = Array.isArray(document?.soldiers) ? document.soldiers : [];
+
+  return rawSoldiers.flatMap((rawSoldier) => {
+    if (!isRecord(rawSoldier) || typeof rawSoldier.type !== "string") {
+      return [];
+    }
+
+    return [
+      {
+        type: rawSoldier.type,
+        nameKey: typeof rawSoldier.name === "string" ? rawSoldier.name : undefined,
+        armorId: typeof rawSoldier.armor === "string" ? rawSoldier.armor : undefined,
+        minStats: statsRecord(rawSoldier.minStats),
+        maxStats: statsRecord(rawSoldier.maxStats),
+      },
+    ];
+  });
+}
+
+function parseRulArmors(text: string): ParsedRulArmor[] {
+  const document = parse(text, { prettyErrors: true, maxAliasCount: -1 }) as YamlRecord | null;
+  const rawArmors = Array.isArray(document?.armors) ? document.armors : [];
+
+  return rawArmors.flatMap((rawArmor) => {
+    if (!isRecord(rawArmor) || typeof rawArmor.type !== "string") {
+      return [];
+    }
+
+    return [
+      {
+        type: rawArmor.type,
+        nameKey: typeof rawArmor.name === "string" ? rawArmor.name : undefined,
+        frontArmor: numberOrUndefined(rawArmor.frontArmor),
+        sideArmor: numberOrUndefined(rawArmor.sideArmor),
+        rearArmor: numberOrUndefined(rawArmor.rearArmor),
+        underArmor: numberOrUndefined(rawArmor.underArmor),
+        damageModifier: numberArray(rawArmor.damageModifier),
+        unitTypes: stringArray(rawArmor.units),
       },
     ];
   });
@@ -202,14 +381,79 @@ function rawRecord(value: unknown): Record<string, unknown> {
   return { ...value };
 }
 
+function statsRecord(value: unknown): RuleUnitStats {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return {
+    tu: numberOrUndefined(value.tu),
+    stamina: numberOrUndefined(value.stamina),
+    health: numberOrUndefined(value.health),
+    bravery: numberOrUndefined(value.bravery),
+    reactions: numberOrUndefined(value.reactions),
+    firing: numberOrUndefined(value.firing),
+    throwing: numberOrUndefined(value.throwing),
+    strength: numberOrUndefined(value.strength),
+    psiStrength: numberOrUndefined(value.psiStrength),
+    psiSkill: numberOrUndefined(value.psiSkill),
+    melee: numberOrUndefined(value.melee),
+    mana: numberOrUndefined(value.mana),
+  };
+}
+
 function scalarOrUndefined(value: unknown): Scalar | undefined {
   return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
     ? value
     : undefined;
 }
 
+function numberArray(value: unknown): number[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((entry) => (typeof entry === "number" && Number.isFinite(entry) ? entry : 1));
+}
+
+function stringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
 function numberOrUndefined(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function averageStats(minStats: RuleUnitStats, maxStats: RuleUnitStats): RuleUnitStats {
+  const keys: Array<keyof RuleUnitStats> = [
+    "tu",
+    "stamina",
+    "health",
+    "bravery",
+    "reactions",
+    "firing",
+    "throwing",
+    "strength",
+    "psiStrength",
+    "psiSkill",
+    "melee",
+    "mana",
+  ];
+
+  return Object.fromEntries(
+    keys.flatMap((key) => {
+      const min = minStats[key];
+      const max = maxStats[key];
+      if (min === undefined && max === undefined) return [];
+      if (min === undefined) return [[key, max]];
+      if (max === undefined) return [[key, min]];
+      return [[key, Math.round((min + max) / 2)]];
+    }),
+  ) as RuleUnitStats;
 }
 
 function isRecord(value: unknown): value is YamlRecord {
@@ -222,6 +466,10 @@ function cleanRuleName(type: string): string {
     .replace(/_/g, " ")
     .toLowerCase()
     .replace(/\b\w/g, (match: string) => match.toUpperCase());
+}
+
+function displayName(key: string, translations: TranslationMap): string {
+  return translations[key] ?? cleanRuleName(key);
 }
 
 function uniqueId(value: string): string {
