@@ -11,9 +11,18 @@ import {
   expectedTotalDamage,
   panicChanceFromScaledMoraleDamage,
   rollOutcomes,
+  targetDamageModifier,
 } from "../src/damage.ts";
-import { importOpenXcomItems } from "../src/rulImport.ts";
+import {
+  importOpenXcomArmors,
+  importOpenXcomItems,
+  importOpenXcomSoldiers,
+  importOpenXcomTranslations,
+  importOpenXcomUnits,
+} from "../src/rulImport.ts";
+import { damageModifiersForArmor, mergeArmorsById } from "../src/stores/scenarioStoreHelpers.ts";
 import type { DamageType, RandomProfile, Scenario, WeaponSystem } from "../src/types.ts";
+import { translatedDamageTypeName } from "../src/utils/damageTypeTranslations.ts";
 
 const scenario: Scenario = {
   strength: 0,
@@ -312,6 +321,167 @@ items:
     const imported = importOpenXcomItems(source, [flatHpType]);
     assert.equal(imported.weapons[0].randomProfileIdOverride, expectedProfile);
   }
+});
+
+test("imports units and linked armors for scenario presets", () => {
+  const units = importOpenXcomUnits(`
+units:
+  - type: STR_TEST_SOLDIER
+    stats:
+      health: 42
+      bravery: 70
+      strength: 55
+      firing: 64
+      melee: 71
+    armor: TEST_ARMOR
+`);
+  const armors = importOpenXcomArmors(`
+armors:
+  - type: TEST_ARMOR
+    frontArmor: 30
+    sideArmor: 20
+    rearArmor: 10
+    underArmor: 5
+    damageModifier: [1, 0.75, 0.5]
+`);
+
+  assert.equal(units[0].armorId, "TEST_ARMOR");
+  assert.equal(units[0].stats.health, 42);
+  assert.equal(units[0].stats.melee, 71);
+  assert.equal(armors[0].sideArmor, 20);
+  assert.equal(armors[0].damageModifier[1], 0.75);
+});
+
+test("imports translations and applies them to ruleset names", () => {
+  const translations = importOpenXcomTranslations(`
+en-US:
+  STR_TEST_SOLDIER: "Translated Soldier"
+  TEST_ARMOR: "Translated Armor"
+  STR_TEST_CLIP: "Translated Clip"
+`);
+  const units = importOpenXcomUnits(`
+units:
+  - type: STR_TEST_SOLDIER
+    stats:
+      health: 42
+`, translations);
+  const armors = importOpenXcomArmors(`
+armors:
+  - type: TEST_ARMOR
+`, translations);
+  const imported = importOpenXcomItems(`
+items:
+  - type: STR_TEST_CLIP
+    power: 42
+    damageType: 0
+    battleType: 2
+`, [flatHpType], translations);
+
+  assert.equal(units[0].name, "Translated Soldier");
+  assert.equal(armors[0].name, "Translated Armor");
+  assert.equal(imported.weapons[0].name, "Translated Clip");
+});
+
+test("default damage type names use language translations", () => {
+  const translations = {
+    STR_DAMAGE_ARMOR_PIERCING: "ARMOR PIERCING",
+    STR_DAMAGE_HIGH_EXPLOSIVE: "HIGH EXPLOSIVE",
+  };
+
+  assert.equal(
+    translatedDamageTypeName({ ...flatHpType, id: "1-armor-piercing", name: "1 - Armor Piercing" }, translations),
+    "1 - ARMOR PIERCING",
+  );
+  assert.equal(
+    translatedDamageTypeName({ ...flatHpType, id: "3-high-explosive", name: "3 - High Explosive" }, translations),
+    "3 - HIGH EXPLOSIVE",
+  );
+});
+
+test("imports soldier min, average, and max user presets", () => {
+  const soldiers = importOpenXcomSoldiers(`
+soldiers:
+  - type: STR_TEST_SOLDIER
+    minStats:
+      health: 25
+      bravery: 10
+      strength: 20
+      firing: 40
+      melee: 20
+    maxStats:
+      health: 40
+      bravery: 60
+      strength: 40
+      firing: 70
+      melee: 40
+    armor: STR_NONE_UC
+`);
+
+  assert.equal(soldiers.length, 3);
+  assert.equal(soldiers[0].name, "Test Soldier (Average)");
+  assert.equal(soldiers[0].presetKind, "soldier-average");
+  assert.equal(soldiers[0].armorId, "STR_NONE_UC");
+  assert.equal(soldiers[0].stats.health, 33);
+  assert.equal(soldiers[0].stats.bravery, 35);
+  assert.equal(soldiers[0].stats.strength, 30);
+  assert.equal(soldiers[1].stats.firing, 40);
+  assert.equal(soldiers[2].stats.melee, 40);
+});
+
+test("target armor damage modifiers reduce rolled power before armor", () => {
+  const apType: DamageType = {
+    ...flatHpType,
+    id: "1-armor-piercing",
+  };
+  const resistantScenario = {
+    ...scenario,
+    targetDamageModifiers: [1, 0.75],
+  };
+  const apWeapon = {
+    ...weapon,
+    damageTypeId: "1-armor-piercing",
+  };
+
+  assert.equal(targetDamageModifier(apWeapon, resistantScenario, [flatHpType, apType]), 0.75);
+  assert.equal(damageAtRoll(apWeapon, resistantScenario, 0, 1, [flatHpType, apType]), 30);
+});
+
+test("custom target armor clears damage modifiers from previous preset armor", () => {
+  assert.deepEqual(
+    damageModifiersForArmor({
+      id: "TEST_RESISTANT_ARMOR",
+      type: "TEST_RESISTANT_ARMOR",
+      name: "Test Resistant Armor",
+      frontArmor: 20,
+      sideArmor: 20,
+      rearArmor: 20,
+      underArmor: 20,
+      damageModifier: [1, 0.5],
+    }),
+    [1, 0.5],
+  );
+  assert.equal(damageModifiersForArmor(undefined), undefined);
+});
+
+test("imported armors replace existing definitions with the same id", () => {
+  const existing = importOpenXcomArmors(`
+armors:
+  - type: STR_PERSONAL_ARMOR_UC
+    sideArmor: 22
+    damageModifier: [1, 1]
+`);
+  const imported = importOpenXcomArmors(`
+armors:
+  - type: STR_PERSONAL_ARMOR_UC
+    sideArmor: 88
+    damageModifier: [1, 0.25]
+`);
+
+  mergeArmorsById(existing, imported);
+
+  assert.equal(existing.length, 1);
+  assert.equal(existing[0].sideArmor, 88);
+  assert.deepEqual(existing[0].damageModifier, [1, 0.25]);
 });
 
 test("imports powered OpenXcom items mapping to damage types and overrides", () => {

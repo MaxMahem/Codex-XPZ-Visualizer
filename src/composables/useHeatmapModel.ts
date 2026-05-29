@@ -55,6 +55,10 @@ export function useHeatmapModel() {
     }));
     const fixedArmorEffectiveness =
       scenarioStore.scenario.armorEffectiveness * damageTypesStore.selectedDamageType.armorEffectiveness;
+    const selectedDamageTypeIndex = Number.parseInt(damageTypesStore.selectedDamageType.id, 10);
+    const targetDamageModifier = Number.isFinite(selectedDamageTypeIndex)
+      ? scenarioStore.scenario.targetDamageModifiers?.[selectedDamageTypeIndex] ?? 1
+      : 1;
 
     for (let armor = 0; armor < height; armor += 1) {
       for (let power = 0; power < width; power += 1) {
@@ -65,9 +69,10 @@ export function useHeatmapModel() {
 
         for (const outcome of outcomesByPower[power]) {
           const rolledPower = outcome.rolledPower;
+          const resistedPower = Math.floor(rolledPower * targetDamageModifier);
           const postArmorDamage = Math.max(
             0,
-            Math.trunc(rolledPower - armor * armorEffectiveness),
+            Math.trunc(resistedPower - armor * armorEffectiveness),
           );
           for (const setting of componentSettings) {
             const componentBaseDamage = setting.key === "preArmor" ? rolledPower : postArmorDamage;
@@ -126,23 +131,22 @@ export function useHeatmapModel() {
     return canvas.toDataURL("image/png");
   });
 
-  const inspectedHeatmapCell = computed(() => {
-    const hover = uiStore.heatmapHover ?? { armor: 50, power: 75 };
-    const armor = Math.max(0, Math.min(100, Math.round(hover.armor)));
-    const power = Math.max(0, Math.min(150, Math.round(hover.power)));
-    const index = armor * heatmapData.value.width + power;
+  function lookupCell(armor: number, power: number) {
+    const clampedArmor = Math.max(0, Math.min(100, Math.round(armor)));
+    const clampedPower = Math.max(0, Math.min(150, Math.round(power)));
+    const index = clampedArmor * heatmapData.value.width + clampedPower;
     const expectedHp = heatmapData.value.values.hp[index] ?? 0;
     const expectedStun = heatmapData.value.values.stun[index] ?? 0;
     const expectedMetric = heatmapValueAt(index);
     return {
-      armor,
-      power,
+      armor: clampedArmor,
+      power: clampedPower,
       expectedHp,
       expectedStun,
       expectedMetric,
       expectedTotal: expectedHp + expectedStun,
     };
-  });
+  }
 
   const heatmapHpContour = computed<HeatmapContourSegment[]>(() => {
     const data = heatmapData.value;
@@ -270,7 +274,7 @@ export function useHeatmapModel() {
     heatmapHpContour,
     heatmapImageHref,
     heatmapMaxDamage,
-    inspectedHeatmapCell,
+    lookupCell,
   };
 }
 

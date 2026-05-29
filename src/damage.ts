@@ -94,7 +94,7 @@ export function modifiedPower(weapon: WeaponSystem, scenario: Scenario): number 
 }
 
 export function rolledPowerBase(weapon: WeaponSystem, scenario: Scenario): number {
-  return Math.max(0, Math.round(modifiedPower(weapon, scenario)));
+  return Math.max(0, Math.trunc(modifiedPower(weapon, scenario)));
 }
 
 export function damageTypeFor(
@@ -200,6 +200,21 @@ export function effectiveArmor(
 ): number {
   const armorEffectiveness = armorEffectivenessModifier(weapon, scenario, damageTypes);
   return armor * scenario.armorEffectiveness * armorEffectiveness;
+}
+
+export function targetDamageModifier(
+  weapon: WeaponSystem,
+  scenario: Scenario,
+  damageTypes: DamageType[],
+): number {
+  const damageType = damageTypeFor(weapon, damageTypes);
+  const damageTypeIndex = Number.parseInt(damageType.id, 10);
+  if (!Number.isFinite(damageTypeIndex)) {
+    return 1;
+  }
+
+  const modifier = scenario.targetDamageModifiers?.[damageTypeIndex];
+  return typeof modifier === "number" && Number.isFinite(modifier) ? modifier : 1;
 }
 
 export function expectedDamage(
@@ -367,9 +382,10 @@ export function damageFromRolledPower(
   rolledPower: number,
   damageTypes: DamageType[],
 ): number {
+  const resistedPower = Math.floor(rolledPower * targetDamageModifier(weapon, scenario, damageTypes));
   return Math.max(
     0,
-    Math.trunc(rolledPower - effectiveArmor(weapon, scenario, armor, damageTypes)),
+    Math.trunc(resistedPower - effectiveArmor(weapon, scenario, armor, damageTypes)),
   );
 }
 

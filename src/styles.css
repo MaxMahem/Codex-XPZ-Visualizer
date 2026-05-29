@@ -258,6 +258,23 @@ h2 {
   padding: 0 18px 14px;
 }
 
+.scenario-imports {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px 14px;
+}
+
+.scenario-imports small {
+  color: #647168;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.scenario-import-status {
+  margin: -6px 18px 14px;
+}
+
 .mini-tab {
   border: 1px solid #cfd7ce;
   border-radius: 999px;

@@ -19,6 +19,7 @@ export interface DamageBonusEntry {
 
 export interface WeaponSystem {
   id: string;
+  sourceType?: string;
   name: string;
   category: string;
   damageTypeId: string;
@@ -67,9 +68,64 @@ export interface Scenario {
   targetBravery: number;
   armor: number;
   armorEffectiveness: number;
+  targetDamageModifiers?: number[];
   armorMin: number;
   armorMax: number;
   armorStep: number;
+}
+
+export type ArmorSide = "front" | "side" | "rear" | "under";
+
+export interface RuleUnitStats {
+  tu?: number;
+  stamina?: number;
+  health?: number;
+  bravery?: number;
+  reactions?: number;
+  firing?: number;
+  throwing?: number;
+  strength?: number;
+  psiStrength?: number;
+  psiSkill?: number;
+  melee?: number;
+  mana?: number;
+}
+
+export interface UnitDefinition {
+  id: string;
+  type: string;
+  name: string;
+  armorId?: string;
+  stats: RuleUnitStats;
+  presetKind?: "unit" | "soldier-min" | "soldier-average" | "soldier-max";
+}
+
+export interface AppConfig {
+  activeDataset: string;
+  defaultState: AppDefaultState;
+}
+
+export interface AppDefaultState {
+  userPresetType?: string;
+  userPresetKind?: UnitDefinition["presetKind"];
+  targetUnitType?: string;
+  targetArmorSide?: ArmorSide;
+  focusedWeaponType?: string;
+  selectedWeaponTypes?: string[];
+}
+
+export type TranslationMap = Record<string, string>;
+
+export interface ArmorDefinition {
+  id: string;
+  type: string;
+  name: string;
+  frontArmor: number;
+  sideArmor: number;
+  rearArmor: number;
+  underArmor: number;
+  damageModifier: number[];
+  unitTypes?: string[];
 }
 
 export interface DamagePoint {

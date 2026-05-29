@@ -13,14 +13,12 @@ import { useDamageTypesStore } from "../stores/damageTypesStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
 import type { DamagePoint, WeaponSystem } from "../types";
-import { useCurrentArmor } from "./useCurrentArmor";
 
 export function useVsArmorModel() {
   const scenarioStore = useScenarioStore();
   const damageTypesStore = useDamageTypesStore();
   const weaponsStore = useWeaponsStore();
   const comparisonStore = useComparisonStore();
-  const { currentArmor } = useCurrentArmor();
 
   const selectedWeapons = computed(() =>
     weaponsStore.editableWeapons.filter((weapon) =>
@@ -51,11 +49,11 @@ export function useVsArmorModel() {
     selectedWeapons.value
       .map((weapon) => ({
         weapon,
-        point: weaponAtArmor(weapon, currentArmor.value),
+        point: weaponAtArmor(weapon, scenarioStore.currentArmor),
         expectedStun: buildDamageRollResults(
           weapon,
           scenarioStore.scenario,
-          currentArmor.value,
+          scenarioStore.currentArmor,
           damageTypesStore.editableDamageTypes,
           randomProfiles,
         ).reduce((sum, result) => sum + result.stunDamage * result.probability, 0),
@@ -63,7 +61,7 @@ export function useVsArmorModel() {
         effectiveArmor: effectiveArmor(
           weapon,
           scenarioStore.scenario,
-          currentArmor.value,
+          scenarioStore.currentArmor,
           damageTypesStore.editableDamageTypes,
         ),
         armorEffectiveness: armorEffectivenessModifier(
@@ -93,7 +91,7 @@ export function useVsArmorModel() {
   return {
     selectedWeapons,
     chartSeries,
-    currentArmor,
+    currentArmor: computed(() => scenarioStore.currentArmor),
     focusedRows,
     maxExpectedDamage,
     weaponAtArmor,

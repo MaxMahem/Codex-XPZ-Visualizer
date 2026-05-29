@@ -1,20 +1,25 @@
 import { defineStore } from "pinia";
 import { computed, reactive, ref } from "vue";
-import { damageTypes } from "../data";
-import defaultItemsRul from "../data/default-items.rul?raw";
+import { damageTypes, defaultState } from "../data";
+import defaultItemsRul from "../data/datasets/xcom1/items.rul?raw";
 import { computeDamageBonus } from "../damage";
 import { importOpenXcomItems } from "../rulImport";
-import type { DamageBonusStat, DamageComponentKey, WeaponSystem } from "../types";
+import type { DamageBonusStat, DamageComponentKey, TranslationMap, WeaponSystem } from "../types";
+import { useComparisonStore } from "./comparisonStore";
 import { useDamageTypesStore } from "./damageTypesStore";
+import { useInspectorStore } from "./inspectorStore";
 import { useScenarioStore } from "./scenarioStore";
 
 export const useWeaponsStore = defineStore('weapons', () => {
   const damageTypesStore = useDamageTypesStore();
+  const comparisonStore = useComparisonStore();
+  const inspectorStore = useInspectorStore();
   const scenarioStore = useScenarioStore();
 
   const shippedImport = importOpenXcomItems(
     defaultItemsRul,
     damageTypes,
+    scenarioStore.translations,
   );
   const shippedWeapons = shippedImport.weapons;
 
@@ -31,6 +36,19 @@ export const useWeaponsStore = defineStore('weapons', () => {
 
   const editableWeapons = reactive<WeaponSystem[]>(shippedWeapons.map((weapon) => ({ ...weapon })));
   const importStatus = ref("");
+
+  const defaultSelectedIds = defaultWeaponIds(defaultState.selectedWeaponTypes ?? [], editableWeapons);
+  if (comparisonStore.selectedIds.length === 0) {
+    comparisonStore.selectedIds = defaultSelectedIds;
+  }
+  if (!inspectorStore.focusedId) {
+    inspectorStore.setFocus(
+      weaponIdForType(defaultState.focusedWeaponType, editableWeapons) ??
+      defaultSelectedIds[0] ??
+      editableWeapons[0]?.id ??
+      "",
+    );
+  }
 
   function addWeapon(): string {
     const nextNumber = editableWeapons.length + 1;
@@ -84,15 +102,20 @@ export const useWeaponsStore = defineStore('weapons', () => {
       return [];
     }
 
-    const text = await file.text();
+    const importedWeapons = importItemsText(await file.text());
+    importStatus.value = `Imported ${importedWeapons.length} powered items.`;
+    input.value = "";
+    return importedWeapons;
+  }
+
+  function importItemsText(text: string): WeaponSystem[] {
     const imported = importOpenXcomItems(
       text,
       damageTypesStore.editableDamageTypes,
+      scenarioStore.translations,
     );
 
     editableWeapons.push(...imported.weapons);
-    importStatus.value = `Imported ${imported.weapons.length} powered items.`;
-    input.value = "";
     return imported.weapons;
   }
 
@@ -143,6 +166,14 @@ export const useWeaponsStore = defineStore('weapons', () => {
     delete weapon.armorEffectivenessOverride;
   }
 
+  function applyTranslations(translations: TranslationMap): void {
+    for (const weapon of editableWeapons) {
+      if (weapon.sourceType) {
+        weapon.name = displayName(weapon.sourceType, translations);
+      }
+    }
+  }
+
   return {
     shippedWeapons,
     fallbackWeapon,
@@ -156,11 +187,33 @@ export const useWeaponsStore = defineStore('weapons', () => {
     setWeaponDamageBonusStat,
     setWeaponDamageBonusCoefficient,
     importItemsFile,
+    importItemsText,
     setWeaponArmorPenetration,
     setWeaponRandomProfile,
     setWeaponArmorEffectivenessOverride,
     setWeaponDamageModifierOverride,
     setWeaponDamageRandomizedOverride,
     setWeaponDamageType,
+    applyTranslations,
   };
 });
+
+function defaultWeaponIds(types: string[], weapons: WeaponSystem[]): string[] {
+  return types.flatMap((type) => {
+    const id = weaponIdForType(type, weapons);
+    return id ? [id] : [];
+  });
+}
+
+function weaponIdForType(type: string | undefined, weapons: WeaponSystem[]): string | undefined {
+  if (!type) return undefined;
+  return weapons.find((weapon) => weapon.sourceType === type || weapon.id === type)?.id;
+}
+
+function displayName(key: string, translations: TranslationMap): string {
+  return translations[key] ?? key
+    .replace(/^STR_/, "")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (match: string) => match.toUpperCase());
+}

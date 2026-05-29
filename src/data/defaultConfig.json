@@ -1,0 +1,17 @@
+{
+  "activeDataset": "xcom1",
+  "defaultState": {
+    "userPresetType": "STR_SOLDIER",
+    "userPresetKind": "soldier-average",
+    "targetUnitType": "STR_SECTOID_SOLDIER",
+    "targetArmorSide": "front",
+    "focusedWeaponType": "STR_RIFLE_CLIP",
+    "selectedWeaponTypes": [
+      "STR_RIFLE_CLIP",
+      "STR_GRENADE",
+      "STR_LASER_RIFLE",
+      "STR_LASER_PISTOL",
+      "STR_HEAVY_PLASMA_CLIP"
+    ]
+  }
+}
