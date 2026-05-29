@@ -20,6 +20,7 @@ import {
   importOpenXcomTranslations,
   importOpenXcomUnits,
 } from "../src/rulImport.ts";
+import { damageModifiersForArmor, mergeArmorsById } from "../src/stores/scenarioStoreHelpers.ts";
 import type { DamageType, RandomProfile, Scenario, WeaponSystem } from "../src/types.ts";
 import { translatedDamageTypeName } from "../src/utils/damageTypeTranslations.ts";
 
@@ -443,6 +444,44 @@ test("target armor damage modifiers reduce rolled power before armor", () => {
 
   assert.equal(targetDamageModifier(apWeapon, resistantScenario, [flatHpType, apType]), 0.75);
   assert.equal(damageAtRoll(apWeapon, resistantScenario, 0, 1, [flatHpType, apType]), 30);
+});
+
+test("custom target armor clears damage modifiers from previous preset armor", () => {
+  assert.deepEqual(
+    damageModifiersForArmor({
+      id: "TEST_RESISTANT_ARMOR",
+      type: "TEST_RESISTANT_ARMOR",
+      name: "Test Resistant Armor",
+      frontArmor: 20,
+      sideArmor: 20,
+      rearArmor: 20,
+      underArmor: 20,
+      damageModifier: [1, 0.5],
+    }),
+    [1, 0.5],
+  );
+  assert.equal(damageModifiersForArmor(undefined), undefined);
+});
+
+test("imported armors replace existing definitions with the same id", () => {
+  const existing = importOpenXcomArmors(`
+armors:
+  - type: STR_PERSONAL_ARMOR_UC
+    sideArmor: 22
+    damageModifier: [1, 1]
+`);
+  const imported = importOpenXcomArmors(`
+armors:
+  - type: STR_PERSONAL_ARMOR_UC
+    sideArmor: 88
+    damageModifier: [1, 0.25]
+`);
+
+  mergeArmorsById(existing, imported);
+
+  assert.equal(existing.length, 1);
+  assert.equal(existing[0].sideArmor, 88);
+  assert.deepEqual(existing[0].damageModifier, [1, 0.25]);
 });
 
 test("imports powered OpenXcom items mapping to damage types and overrides", () => {

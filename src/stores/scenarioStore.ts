@@ -10,6 +10,7 @@ import {
   importOpenXcomTranslations,
   importOpenXcomUnits,
 } from "../rulImport";
+import { damageModifiersForArmor, mergeArmorsById } from "./scenarioStoreHelpers";
 import type { ArmorDefinition, ArmorSide, Scenario, TranslationMap, UnitDefinition } from "../types";
 
 export type ScenarioTab = "user" | "target";
@@ -66,9 +67,12 @@ export const useScenarioStore = defineStore('scenario', () => {
   function applyTargetArmor(armorId: string): void {
     selectedTargetArmorId.value = armorId;
     const armor = armors.find((candidate) => candidate.id === armorId);
-    if (!armor) return;
+    if (!armor) {
+      scenario.targetDamageModifiers = damageModifiersForArmor(undefined);
+      return;
+    }
 
-    scenario.targetDamageModifiers = armor.damageModifier.length > 0 ? [...armor.damageModifier] : undefined;
+    scenario.targetDamageModifiers = damageModifiersForArmor(armor);
     scenario.armor = armorValueForSide(armor, targetArmorSide.value);
   }
 
@@ -87,7 +91,7 @@ export const useScenarioStore = defineStore('scenario', () => {
 
   function importArmorsText(text: string): ArmorDefinition[] {
     const imported = importOpenXcomArmors(text, translations);
-    armors.push(...imported);
+    mergeArmorsById(armors, imported);
     return imported;
   }
 
