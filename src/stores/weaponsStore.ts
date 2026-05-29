@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { reactive } from "vue";
 import { damageTypes } from "../data";
-import defaultItemsRul from "../data/default-items.rul?raw";
+import defaultItemsRul from "../data/datasets/xcom1/items.rul?raw";
 import { computeDamageBonus } from "../damage";
 import { importOpenXcomItems } from "../rulImport";
 import type { DamageBonusStat, DamageComponentKey, WeaponSystem } from "../types";
