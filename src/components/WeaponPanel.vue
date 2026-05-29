@@ -40,7 +40,6 @@ const { scenario } = storeToRefs(scenarioStore);
         <span class="swatch" :style="{ backgroundColor: weapon.color }"></span>
         <span>
           <strong>{{ weapon.name }}</strong>
-          <small>{{ weapon.category }}</small>
         </span>
       </button>
     </div>

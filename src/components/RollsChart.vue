@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useRollDamageModel } from "../composables/useRollDamageModel";
 import { useUiStore } from "../stores/uiStore";
@@ -7,9 +8,19 @@ import { percentileTooltip } from "../utils/tooltips";
 import type { DamageComponentCurvePoint, DamageMetricKey } from "../types";
 
 const uiStore = useUiStore();
-const { rollWeapon, rollStats, componentCurve, inspectedCurvePoint } = useRollDamageModel();
+const { rollWeapon, rollStats, componentCurve } = useRollDamageModel();
 
-const { rollHoverPercentile, visibleRollComponents } = storeToRefs(uiStore);
+const { visibleRollComponents } = storeToRefs(uiStore);
+
+const rollHoverPercentile = ref<number | null>(null);
+const inspectedCurvePoint = computed(() => {
+  const points = componentCurve.value;
+  if (points.length === 0) return null;
+  const percentile = rollHoverPercentile.value ?? 50;
+  return points.reduce((closest, point) =>
+    Math.abs(point.percentile - percentile) < Math.abs(closest.percentile - percentile) ? point : closest,
+  );
+});
 
 const props = defineProps<{
   targetHp: number;

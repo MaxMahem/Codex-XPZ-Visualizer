@@ -40,19 +40,6 @@ function toggleWeaponDetails(id: string) {
   expandedWeapons.value[id] = !expandedWeapons.value[id];
 }
 
-async function handleImport(event: Event) {
-  const imported = await weaponsStore.importItemsFile(event);
-  if (imported.length > 0) {
-    inspectorStore.setFocus(imported[0].id);
-    // Auto-select imported weapons for comparison too
-    for (const w of imported) {
-      if (!comparisonStore.selectedIds.includes(w.id)) {
-        comparisonStore.toggleWeapon(w.id);
-      }
-    }
-  }
-}
-
 function handleAddWeapon() {
   const id = weaponsStore.addWeapon();
   inspectorStore.setFocus(id);
@@ -120,13 +107,6 @@ function bonusPreview(weapon: WeaponSystem): string {
         </p>
       </div>
       <div class="damage-type-actions">
-        <label
-          class="import-button has-tip"
-          data-tip="Import powered OpenXcom item or ammo entries from a .rul YAML file."
-        >
-          Import Items
-          <input type="file" accept=".rul,.yml,.yaml,text/yaml,text/plain" @change="handleImport" />
-        </label>
         <button
           class="add-button has-tip"
           type="button"

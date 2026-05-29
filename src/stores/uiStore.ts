@@ -20,9 +20,7 @@ export const heatmapMetrics: Array<{ key: HeatmapMetric; label: string }> = [
 
 export const useUiStore = defineStore('ui', () => {
   const activeTab = ref<AppTab>("compare");
-  const rollHoverPercentile = ref<number | null>(null);
-  const visibleRollComponents = ref<DamageMetricKey[]>(["hp", "stun"]);
-  const heatmapHover = ref<{ armor: number; power: number } | null>(null);
+  const visibleRollComponents = ref<DamageMetricKey[]>(["hp", "stun", "armor"]);
   const heatmapMetric = ref<HeatmapMetric>("hp");
 
   function toggleRollComponent(component: DamageMetricKey): void {
@@ -35,9 +33,7 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     activeTab,
-    rollHoverPercentile,
     visibleRollComponents,
-    heatmapHover,
     heatmapMetric,
     toggleRollComponent,
   };

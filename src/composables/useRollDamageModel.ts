@@ -12,7 +12,6 @@ import { useInspectorStore } from "../stores/inspectorStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useUiStore } from "../stores/uiStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
-import { useCurrentArmor } from "./useCurrentArmor";
 import type { DamageComponentCurvePoint, DamageMetricKey } from "../types";
 
 export function useRollDamageModel() {
@@ -21,7 +20,6 @@ export function useRollDamageModel() {
   const weaponsStore = useWeaponsStore();
   const inspectorStore = useInspectorStore();
   const uiStore = useUiStore();
-  const { currentArmor } = useCurrentArmor();
 
   const rollWeapon = computed(
     () =>
@@ -36,7 +34,7 @@ export function useRollDamageModel() {
     buildDamageRollResults(
       rollWeapon.value,
       scenarioStore.scenario,
-      currentArmor.value,
+      scenarioStore.currentArmor,
       damageTypesStore.editableDamageTypes,
       randomProfiles,
     ),
@@ -46,7 +44,7 @@ export function useRollDamageModel() {
     buildDamageComponentCurve(
       rollWeapon.value,
       scenarioStore.scenario,
-      currentArmor.value,
+      scenarioStore.currentArmor,
       damageTypesStore.editableDamageTypes,
       randomProfiles,
     ),
@@ -56,7 +54,7 @@ export function useRollDamageModel() {
     expectedDamage(
       rollWeapon.value,
       scenarioStore.scenario,
-      currentArmor.value,
+      scenarioStore.currentArmor,
       damageTypesStore.editableDamageTypes,
       randomProfiles,
     ),
@@ -66,24 +64,13 @@ export function useRollDamageModel() {
     expectedDamageComponents(
       rollWeapon.value,
       scenarioStore.scenario,
-      currentArmor.value,
+      scenarioStore.currentArmor,
       damageTypesStore.editableDamageTypes,
       randomProfiles,
     ),
   );
 
-  const inspectedCurvePoint = computed(() => {
-    const points = componentCurve.value;
-    if (points.length === 0) {
-      return null;
-    }
-    const percentile = uiStore.rollHoverPercentile ?? 50;
-    return points.reduce((closest, point) =>
-      Math.abs(point.percentile - percentile) < Math.abs(closest.percentile - percentile)
-        ? point
-        : closest,
-    );
-  });
+
 
   const rollStats = computed(() => {
     const results = rollResults.value;
@@ -110,7 +97,7 @@ export function useRollDamageModel() {
       effectivePanicChance: expectedPanicChance(
         rollWeapon.value,
         scenarioStore.scenario,
-        currentArmor.value,
+        scenarioStore.currentArmor,
         damageTypesStore.editableDamageTypes,
         randomProfiles,
       ),
@@ -124,8 +111,7 @@ export function useRollDamageModel() {
   return {
     rollWeapon,
     componentCurve,
-    currentArmor,
-    inspectedCurvePoint,
+    currentArmor: computed(() => scenarioStore.currentArmor),
     rollExpectedDamage,
     rollExpectedComponents,
     rollResults,

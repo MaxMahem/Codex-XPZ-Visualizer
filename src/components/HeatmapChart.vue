@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { storeToRefs } from "pinia";
+import { ref, computed } from "vue";
 import { useHeatmapModel } from "../composables/useHeatmapModel";
-import { useUiStore } from "../stores/uiStore";
 import { formatDamage } from "../utils/formatters";
 
-const uiStore = useUiStore();
-const { heatmapImageHref, heatmapHpContour, inspectedHeatmapCell } = useHeatmapModel();
+const { heatmapImageHref, heatmapHpContour, lookupCell } = useHeatmapModel();
 
-const { heatmapHover } = storeToRefs(uiStore);
+const heatmapHover = ref<{ armor: number; power: number } | null>(null);
+const inspectedHeatmapCell = computed(() => {
+  const hover = heatmapHover.value ?? { armor: 50, power: 75 };
+  return lookupCell(hover.armor, hover.power);
+});
 
 function heatmapX(power: number): number {
   return (power / 150) * 660;

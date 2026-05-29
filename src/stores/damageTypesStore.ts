@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
 import { computed, reactive, ref } from "vue";
 import { damageTypes } from "../data";
-import type { DamageComponentKey, DamageType } from "../types";
+import type { DamageComponentKey, DamageType, TranslationMap } from "../types";
+import { translatedDamageTypeName } from "../utils/damageTypeTranslations";
 
 export const damageComponentOptions: Array<{ key: DamageComponentKey; label: string }> = [
   { key: "hp", label: "HP" },
@@ -15,8 +16,7 @@ export const damageComponentOptions: Array<{ key: DamageComponentKey; label: str
 ];
 
 export const useDamageTypesStore = defineStore('damageTypes', () => {
-  // Frozen base types from static data
-  const baseDamageTypes = Object.freeze(damageTypes.map(dt => Object.freeze({ ...dt })));
+  const baseDamageTypes = reactive<DamageType[]>(damageTypes.map(dt => ({ ...dt })));
   
   // Reactive custom types
   const customDamageTypes = reactive<DamageType[]>([]);
@@ -101,6 +101,12 @@ export const useDamageTypesStore = defineStore('damageTypes', () => {
     if (target) target.damageComponents[component].randomized = value;
   }
 
+  function applyTranslations(translations: TranslationMap): void {
+    for (const damageType of baseDamageTypes) {
+      damageType.name = translatedDamageTypeName(damageType, translations);
+    }
+  }
+
   return {
     editableDamageTypes: allDamageTypes,
     customDamageTypes,
@@ -114,5 +120,6 @@ export const useDamageTypesStore = defineStore('damageTypes', () => {
     setComponentPercent,
     componentRandomized,
     setComponentRandomized,
+    applyTranslations,
   };
 });
