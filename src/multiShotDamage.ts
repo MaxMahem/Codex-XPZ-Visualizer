@@ -12,6 +12,7 @@ import {
   damageFromRolledPower,
   damageTypeFor,
   getDamageComponent,
+  rolledPowerBase,
   rollOutcomes,
 } from "./damage.ts";
 
@@ -52,31 +53,18 @@ interface DamageDistribution {
   activeValues: number[];
 }
 
-type CurveProjectionKey =
-  | "hp"
-  | "hpStun"
-  | "armor"
-  | "morale"
-  | "scaledMorale"
-  | "tu"
-  | "energy"
-  | "mana";
+type PowerCurveValueKey = DamageComponentKey | "scaledMorale";
 
-interface MultiShotCurvePoint extends DamageComponentCurvePoint {
+interface PowerCurveState {
   probability: number;
+  values: Record<PowerCurveValueKey, number>;
 }
 
-interface CurveKeySpec {
-  keys: DamageComponentKey[];
-  bases: bigint[];
-  numberBases: number[];
-  scaledMoraleBase: bigint;
-  scaledMoraleNumberBase: number;
-  includesMorale: boolean;
-  numberKeySpace: number | null;
+interface SingleShotPowerOutcome {
+  rolledPower: number;
+  probability: number;
+  values: Record<PowerCurveValueKey, number>;
 }
-
-const maxArrayCurveKeySpace = 1_000_000;
 
 const curveKeys: DamageComponentKey[] = [
   "hp",
@@ -345,7 +333,7 @@ export function buildMultiShotProjectionCurveForWeapon(
   requestedMetrics: DamageMetricKey[] = ["hp", "stun"],
 ): Record<DamageMetricKey, DamageComponentCurvePoint[]> {
   const requestedKeys = requestedCurveKeys(requestedMetrics);
-  const projections = projectionDistributionsForWeapon(
+  const powerDistribution = powerCurveDistributionForWeapon(
     weapon,
     scenario,
     armor,
@@ -354,7 +342,6 @@ export function buildMultiShotProjectionCurveForWeapon(
     requestedKeys,
     shotCount,
   );
-  const percentiles = projectionPercentiles(projections);
 
   const curves: Record<DamageMetricKey, DamageComponentCurvePoint[]> = {
     hp: [],
@@ -370,60 +357,179 @@ export function buildMultiShotProjectionCurveForWeapon(
     mana: [],
   };
 
-  for (const metric of requestedMetrics) {
-    curves[metric] = percentiles.map((percentile) => {
-      const hpDamage = quantileAt(projections.hp, percentile);
-      const hpStunDamage = quantileAt(projections.hpStun, percentile);
-      const stunDamage = Math.max(0, hpStunDamage - hpDamage);
-      const scaledMoraleDamage = quantileAt(projections.scaledMorale, percentile);
+  let cumulative = 0;
+  const totalBasePower = rolledPowerBase(weapon, scenario) * shotCount;
+  for (const rolledPower of [...powerDistribution.keys()].sort((a, b) => a - b)) {
+    const state = powerDistribution.get(rolledPower);
+    if (!state || state.probability <= 0) {
+      continue;
+    }
 
-      let value = 0;
-      switch (metric) {
-        case "hp":
-          value = hpDamage;
-          break;
-        case "stun":
-          value = stunDamage;
-          break;
-        case "hp-stun":
-          value = hpStunDamage;
-          break;
-        case "morale":
-          value = quantileAt(projections.morale, percentile);
-          break;
-        case "scaledMorale":
-          value = scaledMoraleDamage;
-          break;
-        case "panicChance":
-          value = panicChanceFromScaledMoraleDamage(scaledMoraleDamage);
-          break;
-        case "armor":
-          value = quantileAt(projections.armor, percentile);
-          break;
-        case "preArmor":
-          value = 0;
-          break;
-        case "tu":
-          value = quantileAt(projections.tu, percentile);
-          break;
-        case "energy":
-          value = quantileAt(projections.energy, percentile);
-          break;
-        case "mana":
-          value = quantileAt(projections.mana, percentile);
-          break;
-      }
+    cumulative += state.probability;
+    const percentile = Math.min(100, cumulative * 100);
+    const values = expectedPowerCurveValues(state);
 
-      return {
+    for (const metric of requestedMetrics) {
+      curves[metric].push({
         percentile,
-        rollPercent: percentile,
-        rolledPower: hpStunDamage,
-        value,
-      };
-    });
+        rollPercent: totalBasePower > 0 ? (rolledPower / totalBasePower) * 100 : 0,
+        rolledPower,
+        value: curveValueForMetric(metric, values),
+      });
+    }
   }
 
   return curves;
+}
+
+function powerCurveDistributionForWeapon(
+  weapon: WeaponSystem,
+  scenario: Scenario,
+  armor: number,
+  damageTypes: DamageType[],
+  randomProfiles: RandomProfile[],
+  requestedKeys: DamageComponentKey[],
+  shotCount: number,
+): Map<number, PowerCurveState> {
+  const singleShot = singleShotPowerCurveOutcomes(
+    weapon,
+    scenario,
+    armor,
+    damageTypes,
+    randomProfiles,
+    requestedKeys,
+  );
+  let distribution = new Map<number, PowerCurveState>();
+  distribution.set(0, { probability: 1, values: emptyPowerCurveValues() });
+
+  for (let shot = 0; shot < shotCount; shot += 1) {
+    const next = new Map<number, PowerCurveState>();
+    for (const [currentPower, current] of distribution.entries()) {
+      for (const outcome of singleShot) {
+        const rolledPower = currentPower + outcome.rolledPower;
+        const probability = current.probability * outcome.probability;
+        const existing = next.get(rolledPower) ?? {
+          probability: 0,
+          values: emptyPowerCurveValues(),
+        };
+
+        existing.probability += probability;
+        for (const key of powerCurveValueKeys) {
+          existing.values[key] +=
+            outcome.probability * current.values[key] +
+            probability * outcome.values[key];
+        }
+        next.set(rolledPower, existing);
+      }
+    }
+    distribution = next;
+  }
+
+  return distribution;
+}
+
+function singleShotPowerCurveOutcomes(
+  weapon: WeaponSystem,
+  scenario: Scenario,
+  armor: number,
+  damageTypes: DamageType[],
+  randomProfiles: RandomProfile[],
+  requestedKeys: DamageComponentKey[],
+): SingleShotPowerOutcome[] {
+  const damageType = damageTypeFor(weapon, damageTypes);
+  const settings = componentSettingsFor(weapon, damageType);
+  const needsPostArmor = requestedKeys.some((key) => key !== "preArmor");
+
+  return rollOutcomes(weapon, scenario, damageTypes, randomProfiles).map((outcome) => {
+    const postArmorDamage = needsPostArmor
+      ? damageFromRolledPower(weapon, scenario, armor, outcome.rolledPower, damageTypes)
+      : 0;
+    const values = emptyPowerCurveValues();
+
+    if (requestedKeys.includes("hp")) {
+      values.hp = expectedIntegerComponent(postArmorDamage, settings.hp.percent, settings.hp.randomized);
+    }
+    if (requestedKeys.includes("stun")) {
+      values.stun = expectedIntegerComponent(postArmorDamage, settings.stun.percent, settings.stun.randomized);
+    }
+    if (requestedKeys.includes("morale")) {
+      values.morale = expectedIntegerComponent(postArmorDamage, settings.morale.percent, settings.morale.randomized);
+      values.scaledMorale = Math.trunc(((110 - scenario.targetBravery) * values.morale) / 100);
+    }
+    if (requestedKeys.includes("armor")) {
+      values.armor = expectedIntegerComponent(postArmorDamage, settings.armor.percent, settings.armor.randomized);
+    }
+    if (requestedKeys.includes("preArmor")) {
+      values.preArmor = expectedIntegerComponent(outcome.rolledPower, settings.preArmor.percent, settings.preArmor.randomized);
+    }
+    if (requestedKeys.includes("tu")) {
+      values.tu = expectedIntegerComponent(postArmorDamage, settings.tu.percent, settings.tu.randomized);
+    }
+    if (requestedKeys.includes("energy")) {
+      values.energy = expectedIntegerComponent(postArmorDamage, settings.energy.percent, settings.energy.randomized);
+    }
+    if (requestedKeys.includes("mana")) {
+      values.mana = expectedIntegerComponent(postArmorDamage, settings.mana.percent, settings.mana.randomized);
+    }
+
+    return {
+      rolledPower: outcome.rolledPower,
+      probability: outcome.probability,
+      values,
+    };
+  });
+}
+
+const powerCurveValueKeys: PowerCurveValueKey[] = [
+  "hp",
+  "stun",
+  "morale",
+  "armor",
+  "preArmor",
+  "tu",
+  "energy",
+  "mana",
+  "scaledMorale",
+];
+
+function emptyPowerCurveValues(): Record<PowerCurveValueKey, number> {
+  return {
+    hp: 0,
+    stun: 0,
+    morale: 0,
+    armor: 0,
+    preArmor: 0,
+    tu: 0,
+    energy: 0,
+    mana: 0,
+    scaledMorale: 0,
+  };
+}
+
+function expectedPowerCurveValues(state: PowerCurveState): Record<PowerCurveValueKey, number> {
+  const values = emptyPowerCurveValues();
+  for (const key of powerCurveValueKeys) {
+    values[key] = state.values[key] / state.probability;
+  }
+  return values;
+}
+
+function curveValueForMetric(
+  metric: DamageMetricKey,
+  values: Record<PowerCurveValueKey, number>,
+): number {
+  switch (metric) {
+    case "hp-stun":
+      return values.hp + values.stun;
+    case "scaledMorale":
+      return values.scaledMorale;
+    case "panicChance":
+      return panicChanceFromScaledMoraleDamage(values.scaledMorale);
+    case "armor":
+      return values.armor + values.preArmor;
+    default:
+      return values[metric];
+  }
 }
 
 function convolveCappedDamageStats(
@@ -444,92 +550,6 @@ function convolveCappedDamageStats(
     koChance: totalDistribution[totalThreshold],
     outcomeCount,
   };
-}
-
-function projectionDistributionsForWeapon(
-  weapon: WeaponSystem,
-  scenario: Scenario,
-  armor: number,
-  damageTypes: DamageType[],
-  randomProfiles: RandomProfile[],
-  requestedKeys: DamageComponentKey[],
-  shotCount: number,
-): Partial<Record<CurveProjectionKey, DamageDistribution>> {
-  const damageType = damageTypeFor(weapon, damageTypes);
-  const settings = componentSettingsFor(weapon, damageType);
-  const singleShot = new Map<CurveProjectionKey, Array<{ damage: number; probability: number }>>();
-  const ensure = (key: CurveProjectionKey) => {
-    let outcomes = singleShot.get(key);
-    if (!outcomes) {
-      outcomes = [];
-      singleShot.set(key, outcomes);
-    }
-    return outcomes;
-  };
-
-  const needsHp = requestedKeys.includes("hp");
-  const needsStun = requestedKeys.includes("stun");
-  const needsMorale = requestedKeys.includes("morale");
-  const needsArmor = requestedKeys.includes("armor") || requestedKeys.includes("preArmor");
-  const needsPostArmor = requestedKeys.some((key) => key !== "preArmor");
-
-  for (const outcome of rollOutcomes(weapon, scenario, damageTypes, randomProfiles)) {
-    const postArmorDamage = needsPostArmor
-      ? damageFromRolledPower(weapon, scenario, armor, outcome.rolledPower, damageTypes)
-      : 0;
-    const hpDamage = needsHp || needsStun
-      ? expectedIntegerComponent(postArmorDamage, settings.hp.percent, settings.hp.randomized)
-      : 0;
-    const stunDamage = needsStun
-      ? expectedIntegerComponent(postArmorDamage, settings.stun.percent, settings.stun.randomized)
-      : 0;
-
-    if (needsHp) ensure("hp").push({ damage: hpDamage, probability: outcome.probability });
-    if (needsHp || needsStun) {
-      ensure("hpStun").push({ damage: hpDamage + stunDamage, probability: outcome.probability });
-    }
-    if (needsArmor) {
-      const armorDamage = requestedKeys.includes("armor")
-        ? expectedIntegerComponent(postArmorDamage, settings.armor.percent, settings.armor.randomized)
-        : 0;
-      const preArmorDamage = requestedKeys.includes("preArmor")
-        ? expectedIntegerComponent(outcome.rolledPower, settings.preArmor.percent, settings.preArmor.randomized)
-        : 0;
-      ensure("armor").push({ damage: armorDamage + preArmorDamage, probability: outcome.probability });
-    }
-    if (needsMorale) {
-      const moraleDamage = expectedIntegerComponent(postArmorDamage, settings.morale.percent, settings.morale.randomized);
-      ensure("morale").push({ damage: moraleDamage, probability: outcome.probability });
-      ensure("scaledMorale").push({
-        damage: Math.trunc(((110 - scenario.targetBravery) * moraleDamage) / 100),
-        probability: outcome.probability,
-      });
-    }
-    if (requestedKeys.includes("tu")) {
-      ensure("tu").push({
-        damage: expectedIntegerComponent(postArmorDamage, settings.tu.percent, settings.tu.randomized),
-        probability: outcome.probability,
-      });
-    }
-    if (requestedKeys.includes("energy")) {
-      ensure("energy").push({
-        damage: expectedIntegerComponent(postArmorDamage, settings.energy.percent, settings.energy.randomized),
-        probability: outcome.probability,
-      });
-    }
-    if (requestedKeys.includes("mana")) {
-      ensure("mana").push({
-        damage: expectedIntegerComponent(postArmorDamage, settings.mana.percent, settings.mana.randomized),
-        probability: outcome.probability,
-      });
-    }
-  }
-
-  const distributions: Partial<Record<CurveProjectionKey, DamageDistribution>> = {};
-  for (const [key, outcomes] of singleShot.entries()) {
-    distributions[key] = convolveProjectionDistribution(compactProjectionOutcomes(outcomes), shotCount);
-  }
-  return distributions;
 }
 
 function compactProjectionOutcomes(
@@ -566,7 +586,7 @@ function convolveProjectionDistribution(
 }
 
 function projectionPercentiles(
-  distributions: Partial<Record<CurveProjectionKey, DamageDistribution>>,
+  distributions: Partial<Record<string, DamageDistribution>>,
 ): number[] {
   const breakpoints: number[] = [];
   for (const distribution of Object.values(distributions)) {

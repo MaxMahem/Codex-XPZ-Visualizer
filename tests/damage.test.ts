@@ -116,6 +116,14 @@ const weapon: WeaponSystem = {
   color: "#000000",
 };
 
+function range(start: number, end: number): number[] {
+  const values: number[] = [];
+  for (let value = start; value <= end; value += 1) {
+    values.push(value);
+  }
+  return values;
+}
+
 function totalFromRollResults(
   testWeapon: WeaponSystem,
   testScenario: Scenario,
@@ -305,6 +313,54 @@ test("projection curve produces monotonic multi-shot damage percentiles", () => 
     assert.ok(curve.hp[index].percentile >= curve.hp[index - 1].percentile);
     assert.ok(curve.hp[index].value >= curve.hp[index - 1].value);
   }
+});
+
+test("projection curve keeps every generated power point even when armor floors damage to zero", () => {
+  const halfWideProfile: RandomProfile = {
+    id: "50-150",
+    label: "50-150",
+    minPercent: 50,
+    maxPercent: 150,
+    dice: 1,
+  };
+  const halfWideType: DamageType = {
+    ...flatHpType,
+    randomProfileId: "50-150",
+  };
+  const highArmorScenario = {
+    ...scenario,
+    armor: 100,
+  };
+  const power50Weapon = {
+    ...weapon,
+    basePower: 50,
+  };
+
+  const oneShot = buildMultiShotProjectionCurveForWeapon(
+    power50Weapon,
+    highArmorScenario,
+    100,
+    [halfWideType],
+    1,
+    [halfWideProfile],
+    ["hp"],
+  );
+  const twoShots = buildMultiShotProjectionCurveForWeapon(
+    power50Weapon,
+    highArmorScenario,
+    100,
+    [halfWideType],
+    2,
+    [halfWideProfile],
+    ["hp", "armor"],
+  );
+
+  assert.deepEqual(oneShot.hp.map((point) => point.rolledPower), range(25, 75));
+  assert.equal(oneShot.hp.every((point) => point.value === 0), true);
+  assert.deepEqual(twoShots.hp.map((point) => point.rolledPower), range(50, 150));
+  assert.deepEqual(twoShots.armor.map((point) => point.rolledPower), range(50, 150));
+  assert.equal(twoShots.hp.every((point) => point.value === 0), true);
+  assert.ok(Math.abs((twoShots.hp.at(-1)?.percentile ?? 0) - 100) < 1e-9);
 });
 
 test("HP damage percent scales zero-armor expected damage", () => {

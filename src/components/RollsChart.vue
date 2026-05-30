@@ -18,16 +18,27 @@ const shotCountRef = toRef(props, "shotCount");
 const visibleRollComponentsRef = toRef(props, "visibleRollComponents");
 const scenarioStore = useScenarioStore();
 
+// Compute the union of visible components plus hp-stun (if hp or stun is visible)
+const allMetrics = computed(() => {
+  const list = [...props.visibleRollComponents];
+  if (list.includes("hp") || list.includes("stun")) {
+    if (!list.includes("hp-stun")) {
+      list.push("hp-stun");
+    }
+  }
+  return list;
+});
+
 // Instantiate individual models for each possible metric key
-const hpModel = useRollDamageModel(focusedWeaponIdRef, ref("hp"), visibleRollComponentsRef, rollHoverPercentile, shotCountRef);
-const stunModel = useRollDamageModel(focusedWeaponIdRef, ref("stun"), visibleRollComponentsRef, rollHoverPercentile, shotCountRef);
-const hpStunModel = useRollDamageModel(focusedWeaponIdRef, ref("hp-stun"), visibleRollComponentsRef, rollHoverPercentile, shotCountRef);
-const moraleModel = useRollDamageModel(focusedWeaponIdRef, ref("morale"), visibleRollComponentsRef, rollHoverPercentile, shotCountRef);
-const panicChanceModel = useRollDamageModel(focusedWeaponIdRef, ref("panicChance"), visibleRollComponentsRef, rollHoverPercentile, shotCountRef);
-const armorModel = useRollDamageModel(focusedWeaponIdRef, ref("armor"), visibleRollComponentsRef, rollHoverPercentile, shotCountRef);
-const tuModel = useRollDamageModel(focusedWeaponIdRef, ref("tu"), visibleRollComponentsRef, rollHoverPercentile, shotCountRef);
-const energyModel = useRollDamageModel(focusedWeaponIdRef, ref("energy"), visibleRollComponentsRef, rollHoverPercentile, shotCountRef);
-const manaModel = useRollDamageModel(focusedWeaponIdRef, ref("mana"), visibleRollComponentsRef, rollHoverPercentile, shotCountRef);
+const hpModel = useRollDamageModel(focusedWeaponIdRef, ref("hp"), allMetrics, rollHoverPercentile, shotCountRef);
+const stunModel = useRollDamageModel(focusedWeaponIdRef, ref("stun"), allMetrics, rollHoverPercentile, shotCountRef);
+const hpStunModel = useRollDamageModel(focusedWeaponIdRef, ref("hp-stun"), allMetrics, rollHoverPercentile, shotCountRef);
+const moraleModel = useRollDamageModel(focusedWeaponIdRef, ref("morale"), allMetrics, rollHoverPercentile, shotCountRef);
+const panicChanceModel = useRollDamageModel(focusedWeaponIdRef, ref("panicChance"), allMetrics, rollHoverPercentile, shotCountRef);
+const armorModel = useRollDamageModel(focusedWeaponIdRef, ref("armor"), allMetrics, rollHoverPercentile, shotCountRef);
+const tuModel = useRollDamageModel(focusedWeaponIdRef, ref("tu"), allMetrics, rollHoverPercentile, shotCountRef);
+const energyModel = useRollDamageModel(focusedWeaponIdRef, ref("energy"), allMetrics, rollHoverPercentile, shotCountRef);
+const manaModel = useRollDamageModel(focusedWeaponIdRef, ref("mana"), allMetrics, rollHoverPercentile, shotCountRef);
 
 const models = {
   hp: hpModel,
@@ -270,7 +281,7 @@ const rollStats = computed(() => {
 
   const damages = curvesToScan.flatMap((curve) => curve.map((point) => point.value));
   const minDamage = Math.min(...damages, 0);
-  const maxDamage = Math.max(...damages, props.targetHp, hpModel.rollExpectedDamage.value, 10);
+  const maxDamage = Math.max(...damages, props.targetHp, 10);
 
   return {
     minDamage,
