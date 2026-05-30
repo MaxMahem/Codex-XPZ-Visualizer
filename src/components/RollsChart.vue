@@ -7,16 +7,19 @@ import type { DamageComponentCurvePoint, DamageMetricKey } from "../types";
 
 const props = defineProps<{
   focusedWeaponId: string;
+  shotCount: number;
   targetHp: number;
   visibleRollComponents: DamageMetricKey[];
 }>();
 const rollHoverPercentile = ref<number | null>(null);
 const focusedWeaponIdRef = toRef(props, "focusedWeaponId");
+const shotCountRef = toRef(props, "shotCount");
 const visibleRollComponentsRef = toRef(props, "visibleRollComponents");
 const { rollWeapon, rollStats, componentCurve, inspectedCurvePoint } = useRollDamageModel(
   focusedWeaponIdRef,
   visibleRollComponentsRef,
   rollHoverPercentile,
+  shotCountRef,
 );
 
 function rollX(percentile: number): number {

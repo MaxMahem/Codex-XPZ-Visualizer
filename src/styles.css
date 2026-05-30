@@ -752,6 +752,22 @@ svg {
   margin-bottom: 0;
 }
 
+.distribution-controls {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.shot-picker {
+  width: 96px;
+}
+
+.shot-picker input {
+  min-height: 40px;
+}
+
 .distribution-stats {
   display: flex;
   flex-wrap: wrap;
@@ -1544,6 +1560,10 @@ select:disabled {
 
   .distribution-picker {
     margin-top: 14px;
+  }
+
+  .distribution-controls {
+    justify-content: flex-start;
   }
 
   .damage-type-actions {

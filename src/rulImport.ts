@@ -275,12 +275,15 @@ function parseRulUnits(text: string): ParsedRulUnit[] {
       return [];
     }
 
+    const stats = statsRecord(rawUnit.stats);
+    if (!stats) return [];
+
     return [
       {
         type: rawUnit.type,
         nameKey: typeof rawUnit.name === "string" ? rawUnit.name : undefined,
         armorId: typeof rawUnit.armor === "string" ? rawUnit.armor : undefined,
-        stats: statsRecord(rawUnit.stats),
+        stats,
       },
     ];
   });
@@ -295,13 +298,17 @@ function parseRulSoldiers(text: string): ParsedRulSoldier[] {
       return [];
     }
 
+    const minStats = statsRecord(rawSoldier.minStats);
+    const maxStats = statsRecord(rawSoldier.maxStats);
+    if (!minStats || !maxStats) return [];
+
     return [
       {
         type: rawSoldier.type,
         nameKey: typeof rawSoldier.name === "string" ? rawSoldier.name : undefined,
         armorId: typeof rawSoldier.armor === "string" ? rawSoldier.armor : undefined,
-        minStats: statsRecord(rawSoldier.minStats),
-        maxStats: statsRecord(rawSoldier.maxStats),
+        minStats,
+        maxStats,
       },
     ];
   });
@@ -381,24 +388,48 @@ function rawRecord(value: unknown): Record<string, unknown> {
   return { ...value };
 }
 
-function statsRecord(value: unknown): RuleUnitStats {
+function statsRecord(value: unknown): RuleUnitStats | null {
   if (!isRecord(value)) {
-    return {};
+    return null;
+  }
+
+  const tu = numberOrUndefined(value.tu);
+  const stamina = numberOrUndefined(value.stamina);
+  const health = numberOrUndefined(value.health);
+  const bravery = numberOrUndefined(value.bravery);
+  const reactions = numberOrUndefined(value.reactions);
+  const firing = numberOrUndefined(value.firing);
+  const throwing = numberOrUndefined(value.throwing);
+  const strength = numberOrUndefined(value.strength);
+  const melee = numberOrUndefined(value.melee);
+
+  if (
+    tu === undefined ||
+    stamina === undefined ||
+    health === undefined ||
+    bravery === undefined ||
+    reactions === undefined ||
+    firing === undefined ||
+    throwing === undefined ||
+    strength === undefined ||
+    melee === undefined
+  ) {
+    return null;
   }
 
   return {
-    tu: numberOrUndefined(value.tu),
-    stamina: numberOrUndefined(value.stamina),
-    health: numberOrUndefined(value.health),
-    bravery: numberOrUndefined(value.bravery),
-    reactions: numberOrUndefined(value.reactions),
-    firing: numberOrUndefined(value.firing),
-    throwing: numberOrUndefined(value.throwing),
-    strength: numberOrUndefined(value.strength),
-    psiStrength: numberOrUndefined(value.psiStrength),
-    psiSkill: numberOrUndefined(value.psiSkill),
-    melee: numberOrUndefined(value.melee),
-    mana: numberOrUndefined(value.mana),
+    tu,
+    stamina,
+    health,
+    bravery,
+    reactions,
+    firing,
+    throwing,
+    strength,
+    melee,
+    psiStrength: numberOrUndefined(value.psiStrength) ?? 0,
+    psiSkill: numberOrUndefined(value.psiSkill) ?? 0,
+    mana: numberOrUndefined(value.mana) ?? 0,
   };
 }
 
@@ -445,15 +476,8 @@ function averageStats(minStats: RuleUnitStats, maxStats: RuleUnitStats): RuleUni
   ];
 
   return Object.fromEntries(
-    keys.flatMap((key) => {
-      const min = minStats[key];
-      const max = maxStats[key];
-      if (min === undefined && max === undefined) return [];
-      if (min === undefined) return [[key, max]];
-      if (max === undefined) return [[key, min]];
-      return [[key, Math.round((min + max) / 2)]];
-    }),
-  ) as RuleUnitStats;
+    keys.map((key) => [key, Math.round((minStats[key] + maxStats[key]) / 2)]),
+  ) as unknown as RuleUnitStats;
 }
 
 function isRecord(value: unknown): value is YamlRecord {

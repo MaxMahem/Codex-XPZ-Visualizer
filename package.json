@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vue-tsc && vite build",
     "test": "node --experimental-strip-types tests/damage.test.ts",
+    "bench:multi-shot": "node --experimental-strip-types benchmarks/multiShot.bench.ts",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

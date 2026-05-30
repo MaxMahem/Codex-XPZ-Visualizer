@@ -5,6 +5,7 @@ import { useRollDamageModel } from "../composables/useRollDamageModel";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { damageComponentOptions } from "../stores/damageTypesStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
+import IntegerSpinner from "./IntegerSpinner.vue";
 import RollsChart from "./RollsChart.vue";
 import { formatPercent, formatAverage } from "../utils/formatters";
 import type { DamageMetricKey } from "../types";
@@ -19,11 +20,14 @@ const emit = defineEmits<{
 
 const scenarioStore = useScenarioStore();
 const weaponsStore = useWeaponsStore();
-const visibleRollComponents = ref<DamageMetricKey[]>(["hp", "stun"]);
+const visibleRollComponents = ref<DamageMetricKey[]>(["hp", "stun", "armor"]);
+const shotCount = ref(1);
 const focusedWeaponIdRef = toRef(props, "focusedWeaponId");
-const { currentArmor, rollStats, rollWeapon, rollExpectedComponents } = useRollDamageModel(
+const { currentArmor, modeledShotCount, rollStats, rollWeapon, rollExpectedComponents } = useRollDamageModel(
   focusedWeaponIdRef,
   visibleRollComponents,
+  undefined,
+  shotCount,
 );
 
 const { scenario } = storeToRefs(scenarioStore);
@@ -88,24 +92,39 @@ function rollLegendTotal(component: DamageMetricKey): string {
           Expected Damage
         </h2>
         <p>
-          {{ rollWeapon.name }} vs armor {{ currentArmor }}
+          {{ rollWeapon.name }} x {{ modeledShotCount }} vs armor {{ currentArmor }}
         </p>
       </div>
-      <label
-        v-if="!embedded"
-        class="distribution-picker has-tip"
-        data-tip="Choose the single weapon or ammo system shown in the roll-result chart."
-      >
-        Weapon
-        <select
-          :value="focusedWeaponId"
-          @change="emit('update:focusedWeaponId', ($event.target as HTMLSelectElement).value)"
+      <div class="distribution-controls">
+        <label
+          v-if="!embedded"
+          class="distribution-picker has-tip"
+          data-tip="Choose the weapon or ammo system shown in the roll-result chart."
         >
-          <option v-for="weapon in editableWeapons" :key="weapon.id" :value="weapon.id">
-            {{ weapon.name }}
-          </option>
-        </select>
-      </label>
+          Weapon
+          <select
+            :value="focusedWeaponId"
+            @change="emit('update:focusedWeaponId', ($event.target as HTMLSelectElement).value)"
+          >
+            <option v-for="weapon in editableWeapons" :key="weapon.id" :value="weapon.id">
+              {{ weapon.name }}
+            </option>
+          </select>
+        </label>
+        <label
+          class="distribution-picker shot-picker has-tip"
+          data-tip="Model this many independent shots using the same single-shot damage logic."
+        >
+          Shots
+          <IntegerSpinner
+            v-model="shotCount"
+            :min="1"
+            :max="30"
+            :step="1"
+            :fallback="1"
+          />
+        </label>
+      </div>
     </div>
 
     <div class="distribution-stats">
@@ -119,14 +138,14 @@ function rollLegendTotal(component: DamageMetricKey): string {
       <span
         class="has-tip"
         tabindex="0"
-        data-tip="Chance that one hit reaches or exceeds target HP."
+        data-tip="Chance that total HP damage across all modeled shots reaches or exceeds target HP."
       >
         Kill: <strong>{{ formatPercent(rollStats.killChance) }}</strong>
       </span>
       <span
         class="has-tip"
         tabindex="0"
-        data-tip="Chance HP damage plus stun damage exceeds target HP."
+        data-tip="Chance total HP plus stun damage across all modeled shots exceeds target HP."
       >
         KO: <strong>{{ formatPercent(rollStats.koChance) }}</strong>
       </span>
@@ -166,6 +185,7 @@ function rollLegendTotal(component: DamageMetricKey): string {
 
     <RollsChart
       :focusedWeaponId="focusedWeaponId"
+      :shotCount="modeledShotCount"
       :targetHp="scenario.hitPoints"
       :visibleRollComponents="visibleRollComponents"
     />

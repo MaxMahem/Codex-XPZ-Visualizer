@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
 import { computed, ref } from "vue";
-import { useScenarioStore } from "../stores/scenarioStore";
 import { useDamageTypesStore, damageComponentOptions } from "../stores/damageTypesStore";
 import { heatmapMetrics, type HeatmapMetric } from "../uiOptions";
 import { randomProfiles } from "../data";
@@ -13,13 +12,8 @@ import PercentInput from "./PercentInput.vue";
 
 import HeatmapChart from "./HeatmapChart.vue";
 
-const scenarioStore = useScenarioStore();
 const damageTypesStore = useDamageTypesStore();
 const heatmapMetric = ref<HeatmapMetric>("hp");
-
-const {
-  scenario,
-} = storeToRefs(scenarioStore);
 
 const {
   editableDamageTypes,
@@ -173,13 +167,13 @@ function removeSelectedDamageType(): void {
           <strong>{{ component.label }}</strong>
           <PercentInput
             :ariaLabel="`${component.label} damage percent`"
-            :modelValue="damageTypesStore.componentPercent(selectedDamageType, component.key)"
+            :modelValue="selectedDamageType.damageComponents[component.key].percent"
             :disabled="!isCustomSelected"
             @update:modelValue="damageTypesStore.setComponentPercent(selectedDamageType.id, component.key, $event ?? 0)"
           />
           <label class="checkbox-label compact-checkbox" :class="{ disabled: !isCustomSelected }">
             <input
-              :checked="damageTypesStore.componentRandomized(selectedDamageType, component.key)"
+              :checked="!!selectedDamageType.damageComponents[component.key].randomized"
               type="checkbox"
               :disabled="!isCustomSelected"
               @change="damageTypesStore.setComponentRandomized(selectedDamageType.id, component.key, ($event.target as HTMLInputElement).checked)"

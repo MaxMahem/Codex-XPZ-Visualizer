@@ -6,9 +6,11 @@ import { useWeaponsStore } from "../stores/weaponsStore";
 import { useDamageTypesStore, damageComponentOptions } from "../stores/damageTypesStore";
 import { randomProfiles } from "../data";
 import { modifiedPower, damageTypeFor, computeDamageBonus, DAMAGE_BONUS_STATS, getDamageComponent } from "../damage";
-import type { WeaponSystem, DamageComponentKey } from "../types";
+import type { WeaponSystem, DamageComponentKey, DamageBonusStat } from "../types";
 import { formatDamage } from "../utils/formatters";
 import ColorPicker from "./ColorPicker.vue";
+import DecimalSpinner from "./DecimalSpinner.vue";
+import IntegerSpinner from "./IntegerSpinner.vue";
 import PercentInput from "./PercentInput.vue";
 
 const scenarioStore = useScenarioStore();
@@ -201,7 +203,7 @@ function bonusPreview(weapon: WeaponSystem): string {
             </select>
           </span>
           <span role="cell">
-            <input v-model.number="weapon.basePower" class="dense-input number-input" type="number" min="0" max="500" step="1" title="Base power" />
+            <IntegerSpinner v-model="weapon.basePower" class="dense-input number-input" :min="0" :max="500" title="Base power" />
           </span>
           <span role="cell">
             <PercentInput
@@ -219,15 +221,13 @@ function bonusPreview(weapon: WeaponSystem): string {
             {{ bonusPreview(weapon) }}
           </span>
           <span role="cell">
-            <input
-              :value="formatDamage(modifiedPower(weapon, scenario))"
+            <IntegerSpinner
+              :modelValue="Number(formatDamage(modifiedPower(weapon, scenario)))"
               class="dense-input number-input"
-              type="number"
-              min="0"
-              max="1000"
-              step="1"
+              :min="0"
+              :max="1000"
               title="Final power for the current scenario; editing adjusts base power."
-              @input="weaponsStore.setWeaponModifiedPower(weapon, ($event.target as HTMLInputElement).valueAsNumber)"
+              @update:modelValue="weaponsStore.setWeaponModifiedPower(weapon, $event)"
             />
           </span>
           <span role="cell">
@@ -305,38 +305,38 @@ function bonusPreview(weapon: WeaponSystem): string {
                   class="bonus-select"
                   title="Stat attribute for this bonus entry"
                   @pointerdown.stop
-                  @change.stop="weaponsStore.setWeaponDamageBonusStat(weapon, index, ($event.target as HTMLSelectElement).value as any)"
+                  @change.stop="weaponsStore.setWeaponDamageBonusStat(weapon, index, ($event.target as HTMLSelectElement).value as DamageBonusStat)"
                 >
                   <option v-for="stat in DAMAGE_BONUS_STATS" :key="stat.key" :value="stat.key">
                     {{ stat.label }}
                   </option>
                 </select>
-                <input
-                  :value="entry.coefficients[0]"
+                <DecimalSpinner
+                  :modelValue="entry.coefficients[0]"
                   class="bonus-coeff"
-                  type="number"
-                  step="0.01"
+                  :step="0.01"
+                  :fallback="0"
                   title="Linear coefficient (×s)"
                   @pointerdown.stop
-                  @input.stop="weaponsStore.setWeaponDamageBonusCoefficient(weapon, index, 0, ($event.target as HTMLInputElement).valueAsNumber)"
+                  @update:modelValue="weaponsStore.setWeaponDamageBonusCoefficient(weapon, index, 0, $event)"
                 />
-                <input
-                  :value="entry.coefficients[1]"
+                <DecimalSpinner
+                  :modelValue="entry.coefficients[1]"
                   class="bonus-coeff"
-                  type="number"
-                  step="0.001"
+                  :step="0.001"
+                  :fallback="0"
                   title="Quadratic coefficient (×s²)"
                   @pointerdown.stop
-                  @input.stop="weaponsStore.setWeaponDamageBonusCoefficient(weapon, index, 1, ($event.target as HTMLInputElement).valueAsNumber)"
+                  @update:modelValue="weaponsStore.setWeaponDamageBonusCoefficient(weapon, index, 1, $event)"
                 />
-                <input
-                  :value="entry.coefficients[2]"
+                <DecimalSpinner
+                  :modelValue="entry.coefficients[2]"
                   class="bonus-coeff"
-                  type="number"
-                  step="0.0001"
+                  :step="0.0001"
+                  :fallback="0"
                   title="Cubic coefficient (×s³)"
                   @pointerdown.stop
-                  @input.stop="weaponsStore.setWeaponDamageBonusCoefficient(weapon, index, 2, ($event.target as HTMLInputElement).valueAsNumber)"
+                  @update:modelValue="weaponsStore.setWeaponDamageBonusCoefficient(weapon, index, 2, $event)"
                 />
                 <button
                   class="bonus-remove"

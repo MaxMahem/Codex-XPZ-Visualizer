@@ -1,8 +1,30 @@
 {
   "activeDataset": "xcom1",
+  "defaultScenario": {
+    "tu": 50,
+    "stamina": 50,
+    "health": 40,
+    "strength": 75,
+    "melee": 90,
+    "bravery": 50,
+    "firing": 60,
+    "reactions": 50,
+    "throwing": 50,
+    "psiStrength": 50,
+    "psiSkill": 0,
+    "mana": 0,
+    "rank": 0,
+    "hitPoints": 45,
+    "targetBravery": 50,
+    "armor": 40,
+    "armorEffectiveness": 1,
+    "armorMin": 0,
+    "armorMax": 100,
+    "armorStep": 5
+  },
   "defaultState": {
-    "userPresetType": "STR_SOLDIER",
-    "userPresetKind": "soldier-average",
+    "attackerPresetType": "STR_SOLDIER",
+    "attackerPresetKind": "soldier-average",
     "targetUnitType": "STR_SECTOID_SOLDIER",
     "targetArmorSide": "front",
     "focusedWeaponType": "STR_RIFLE_CLIP",
@@ -13,5 +35,9 @@
       "STR_LASER_PISTOL",
       "STR_HEAVY_PLASMA_CLIP"
     ]
+  },
+  "heatmap": {
+    "maxPower": 150,
+    "maxArmor": 100
   }
 }

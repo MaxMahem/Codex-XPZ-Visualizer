@@ -53,22 +53,19 @@ export interface DamageType {
   color: string;
 }
 
-export interface Scenario {
-  strength: number;
-  melee: number;
-  bravery: number;
-  firing: number;
-  reactions: number;
-  throwing: number;
-  psiStrength: number;
-  psiSkill: number;
-  mana: number;
+export interface AttackerStats extends RuleUnitStats {
   rank: number;
+}
+
+export interface TargetStats {
   hitPoints: number;
   targetBravery: number;
   armor: number;
   armorEffectiveness: number;
   targetDamageModifiers?: number[];
+}
+
+export interface Scenario extends AttackerStats, TargetStats {
   armorMin: number;
   armorMax: number;
   armorStep: number;
@@ -77,18 +74,18 @@ export interface Scenario {
 export type ArmorSide = "front" | "side" | "rear" | "under";
 
 export interface RuleUnitStats {
-  tu?: number;
-  stamina?: number;
-  health?: number;
-  bravery?: number;
-  reactions?: number;
-  firing?: number;
-  throwing?: number;
-  strength?: number;
-  psiStrength?: number;
-  psiSkill?: number;
-  melee?: number;
-  mana?: number;
+  tu: number;
+  stamina: number;
+  health: number;
+  bravery: number;
+  reactions: number;
+  firing: number;
+  throwing: number;
+  strength: number;
+  psiStrength: number;
+  psiSkill: number;
+  melee: number;
+  mana: number;
 }
 
 export interface UnitDefinition {
@@ -100,14 +97,21 @@ export interface UnitDefinition {
   presetKind?: "unit" | "soldier-min" | "soldier-average" | "soldier-max";
 }
 
+export interface HeatmapDomain {
+  maxPower: number;
+  maxArmor: number;
+}
+
 export interface AppConfig {
   activeDataset: string;
+  defaultScenario: Scenario;
   defaultState: AppDefaultState;
+  heatmap: HeatmapDomain;
 }
 
 export interface AppDefaultState {
-  userPresetType?: string;
-  userPresetKind?: UnitDefinition["presetKind"];
+  attackerPresetType?: string;
+  attackerPresetKind?: UnitDefinition["presetKind"];
   targetUnitType?: string;
   targetArmorSide?: ArmorSide;
   focusedWeaponType?: string;

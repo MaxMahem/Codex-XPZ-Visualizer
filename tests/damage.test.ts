@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   armorEffectivenessModifier,
+  buildDamageComponentCurve,
   buildDamageRollResults,
   damageAtRoll,
   effectiveArmor,
@@ -14,6 +15,16 @@ import {
   targetDamageModifier,
 } from "../src/damage.ts";
 import {
+  buildMultiShotComponentCurve,
+  buildMultiShotDamageRollResults,
+  buildMultiShotDamageStats,
+  buildMultiShotDamageStatsForWeapon,
+  buildMultiShotProjectionCurveForWeapon,
+  buildSingleShotComponentCurveForMetrics,
+  multiplyExpectedDamageComponents,
+} from "../src/multiShotDamage.ts";
+
+import {
   importOpenXcomArmors,
   importOpenXcomItems,
   importOpenXcomSoldiers,
@@ -25,14 +36,27 @@ import type { DamageType, RandomProfile, Scenario, WeaponSystem } from "../src/t
 import { translatedDamageTypeName } from "../src/utils/damageTypeTranslations.ts";
 
 const scenario: Scenario = {
+  tu: 50,
+  stamina: 50,
+  health: 40,
   strength: 0,
   melee: 0,
+  bravery: 50,
+  firing: 50,
+  reactions: 50,
+  throwing: 50,
+  psiStrength: 50,
+  psiSkill: 0,
+  mana: 0,
+  rank: 0,
   hitPoints: 45,
+  targetBravery: 50,
+  armor: 40,
   armorEffectiveness: 1,
+  targetDamageModifiers: undefined,
   armorMin: 0,
   armorMax: 100,
   armorStep: 5,
-  targetBravery: 50,
 };
 
 const flatProfile: RandomProfile = {
@@ -108,6 +132,216 @@ function totalFromRollResults(
 test("flat power at zero armor deals expected HP equal to weapon power", () => {
   assert.equal(expectedDamage(weapon, scenario, 0, [flatHpType], [flatProfile]), 40);
   assert.equal(expectedTotalDamage(weapon, scenario, 0, [flatHpType], [flatProfile]), 40);
+});
+
+test("multi-shot expected components scale outside the single-shot damage logic", () => {
+  const components = multiplyExpectedDamageComponents(
+    { hp: 40, stun: 2, morale: 0, armor: 1, preArmor: 3, tu: 0, energy: 0, mana: 0 },
+    3,
+  );
+
+  assert.deepEqual(components, {
+    hp: 120,
+    stun: 6,
+    morale: 0,
+    armor: 3,
+    preArmor: 9,
+    tu: 0,
+    energy: 0,
+    mana: 0,
+  });
+});
+
+test("multi-shot roll results convolve independent shots", () => {
+  const singleShot = buildDamageRollResults(weapon, scenario, 0, [flatHpType], [standardProfile]);
+  const threeShots = buildMultiShotDamageRollResults(singleShot, 3);
+  const expected = threeShots.reduce((sum, result) => sum + result.hpDamage * result.probability, 0);
+  const killChance = threeShots
+    .filter((result) => result.hpDamage >= scenario.hitPoints)
+    .reduce((sum, result) => sum + result.probability, 0);
+
+  assert.equal(Math.round(expected), 120);
+  assert.ok(killChance > 0.96);
+  assert.ok(killChance < 0.97);
+});
+
+test("multi-shot damage stats match the full hp and stun distribution", () => {
+  const singleShot = buildDamageRollResults(weapon, scenario, 0, [flatHpType], [standardProfile]);
+  const threeShots = buildMultiShotDamageRollResults(singleShot, 3);
+  const stats = buildMultiShotDamageStats(singleShot, 3, scenario.hitPoints);
+  const directStats = buildMultiShotDamageStatsForWeapon(
+    weapon,
+    scenario,
+    0,
+    [flatHpType],
+    3,
+    [standardProfile],
+  );
+  const zeroChance = threeShots
+    .filter((result) => result.totalDamage <= 0)
+    .reduce((sum, result) => sum + result.probability, 0);
+  const killChance = threeShots
+    .filter((result) => result.hpDamage >= scenario.hitPoints)
+    .reduce((sum, result) => sum + result.probability, 0);
+  const koChance = threeShots
+    .filter((result) => result.hpDamage + result.stunDamage > scenario.hitPoints)
+    .reduce((sum, result) => sum + result.probability, 0);
+
+  assert.ok(Math.abs(stats.zeroChance - zeroChance) < 1e-12);
+  assert.ok(Math.abs(stats.killChance - killChance) < 1e-12);
+  assert.ok(Math.abs(stats.koChance - koChance) < 1e-12);
+  assert.ok(Math.abs(directStats.zeroChance - zeroChance) < 1e-12);
+  assert.ok(Math.abs(directStats.killChance - killChance) < 1e-12);
+  assert.ok(Math.abs(directStats.koChance - koChance) < 1e-12);
+});
+
+test("multi-shot component curve preserves one-shot curve and sums percentiles for volleys", () => {
+  const oneShot = [
+    {
+      percentile: 50,
+      rollPercent: 50,
+      rolledPower: 20,
+      hpDamage: 20,
+      stunDamage: 0,
+      moraleDamage: 0,
+      armorDamage: 0,
+      preArmorDamage: 0,
+      tuDamage: 0,
+      energyDamage: 0,
+      manaDamage: 0,
+      scaledMoraleDamage: 0,
+      panicChance: 0,
+      totalDamage: 20,
+    },
+    {
+      percentile: 100,
+      rollPercent: 100,
+      rolledPower: 40,
+      hpDamage: 40,
+      stunDamage: 0,
+      moraleDamage: 0,
+      armorDamage: 0,
+      preArmorDamage: 0,
+      tuDamage: 0,
+      energyDamage: 0,
+      manaDamage: 0,
+      scaledMoraleDamage: 0,
+      panicChance: 0,
+      totalDamage: 40,
+    },
+  ];
+
+  assert.deepEqual(buildMultiShotComponentCurve(oneShot, 1), oneShot);
+
+  const twoShots = buildMultiShotComponentCurve(oneShot, 2);
+  assert.deepEqual(
+    twoShots.map((point) => [point.percentile, point.hpDamage, point.rolledPower]),
+    [
+      [25, 40, 40],
+      [75, 60, 60],
+      [100, 80, 80],
+    ],
+  );
+});
+
+test("multi-shot component curve only convolves requested component dimensions", () => {
+  const oneShot = [
+    {
+      percentile: 50,
+      rollPercent: 50,
+      rolledPower: 20,
+      hpDamage: 10,
+      stunDamage: 0,
+      moraleDamage: 0,
+      armorDamage: 1,
+      preArmorDamage: 0,
+      tuDamage: 0,
+      energyDamage: 0,
+      manaDamage: 0,
+      scaledMoraleDamage: 0,
+      panicChance: 0,
+      totalDamage: 10,
+    },
+    {
+      percentile: 100,
+      rollPercent: 100,
+      rolledPower: 40,
+      hpDamage: 10,
+      stunDamage: 0,
+      moraleDamage: 0,
+      armorDamage: 9,
+      preArmorDamage: 0,
+      tuDamage: 0,
+      energyDamage: 0,
+      manaDamage: 0,
+      scaledMoraleDamage: 0,
+      panicChance: 0,
+      totalDamage: 10,
+    },
+  ];
+
+  const hpOnly = buildMultiShotComponentCurve(oneShot, 2, ["hp"]);
+  const hpAndArmor = buildMultiShotComponentCurve(oneShot, 2, ["hp", "armor"]);
+
+  assert.equal(hpOnly.length, 1);
+  assert.equal(hpOnly[0].hpDamage, 20);
+  assert.equal(hpOnly[0].armorDamage, 0);
+  assert.equal(hpAndArmor.length, 3);
+});
+
+test("metric-scoped single-shot curve matches canonical curve for requested metrics", () => {
+  const canonical = buildDamageComponentCurve(
+    weapon,
+    scenario,
+    0,
+    [flatHpType],
+    [standardProfile],
+  );
+  const scoped = buildSingleShotComponentCurveForMetrics(
+    weapon,
+    scenario,
+    0,
+    [flatHpType],
+    [standardProfile],
+    ["hp", "stun", "armor", "panicChance"],
+  );
+
+  assert.deepEqual(
+    scoped.map((point) => ({
+      hpDamage: point.hpDamage,
+      stunDamage: point.stunDamage,
+      armorDamage: point.armorDamage,
+      scaledMoraleDamage: point.scaledMoraleDamage,
+      panicChance: point.panicChance,
+      totalDamage: point.totalDamage,
+    })),
+    canonical.map((point) => ({
+      hpDamage: point.hpDamage,
+      stunDamage: point.stunDamage,
+      armorDamage: point.armorDamage,
+      scaledMoraleDamage: point.scaledMoraleDamage,
+      panicChance: point.panicChance,
+      totalDamage: point.totalDamage,
+    })),
+  );
+});
+
+test("projection curve produces monotonic multi-shot damage percentiles", () => {
+  const curve = buildMultiShotProjectionCurveForWeapon(
+    weapon,
+    scenario,
+    0,
+    [flatHpType],
+    3,
+    [standardProfile],
+    ["hp", "stun", "armor"],
+  );
+
+  assert.ok(Math.abs((curve.at(-1)?.percentile ?? 0) - 100) < 1e-9);
+  for (let index = 1; index < curve.length; index += 1) {
+    assert.ok(curve[index].percentile >= curve[index - 1].percentile);
+    assert.ok(curve[index].totalDamage >= curve[index - 1].totalDamage);
+  }
 });
 
 test("HP damage percent scales zero-armor expected damage", () => {
@@ -328,10 +562,14 @@ test("imports units and linked armors for scenario presets", () => {
 units:
   - type: STR_TEST_SOLDIER
     stats:
+      tu: 50
+      stamina: 50
       health: 42
       bravery: 70
-      strength: 55
+      reactions: 50
       firing: 64
+      throwing: 50
+      strength: 55
       melee: 71
     armor: TEST_ARMOR
 `);
@@ -363,7 +601,15 @@ en-US:
 units:
   - type: STR_TEST_SOLDIER
     stats:
+      tu: 50
+      stamina: 50
       health: 42
+      bravery: 70
+      reactions: 50
+      firing: 50
+      throwing: 50
+      strength: 50
+      melee: 50
 `, translations);
   const armors = importOpenXcomArmors(`
 armors:
@@ -403,16 +649,24 @@ test("imports soldier min, average, and max user presets", () => {
 soldiers:
   - type: STR_TEST_SOLDIER
     minStats:
+      tu: 50
+      stamina: 50
       health: 25
       bravery: 10
-      strength: 20
+      reactions: 50
       firing: 40
+      throwing: 50
+      strength: 20
       melee: 20
     maxStats:
+      tu: 50
+      stamina: 50
       health: 40
       bravery: 60
-      strength: 40
+      reactions: 50
       firing: 70
+      throwing: 50
+      strength: 40
       melee: 40
     armor: STR_NONE_UC
 `);

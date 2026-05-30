@@ -93,10 +93,6 @@ export const useWeaponsStore = defineStore('weapons', () => {
     return imported.weapons;
   }
 
-  function setWeaponArmorPenetration(weapon: WeaponSystem, value: number): void {
-    weapon.armorPenetration = (Number.isFinite(value) ? value : 0) / 100;
-  }
-
   function setWeaponRandomProfile(weapon: WeaponSystem, value: string): void {
     weapon.randomProfileIdOverride = value === "default" ? undefined : value;
   }
@@ -152,7 +148,6 @@ export const useWeaponsStore = defineStore('weapons', () => {
     setWeaponDamageBonusStat,
     setWeaponDamageBonusCoefficient,
     importItemsFile,
-    setWeaponArmorPenetration,
     setWeaponRandomProfile,
     setWeaponArmorEffectivenessOverride,
     setWeaponDamageModifierOverride,

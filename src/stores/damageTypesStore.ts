@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, reactive } from "vue";
 import { damageTypes } from "../data";
-import type { DamageComponentKey, DamageType, TranslationMap } from "../types";
+import type { DamageComponent, DamageComponentKey, DamageType, TranslationMap } from "../types";
 import { translatedDamageTypeName } from "../utils/damageTypeTranslations";
 
 export const damageComponentOptions: Array<{ key: DamageComponentKey; label: string }> = [
@@ -40,7 +40,7 @@ export const useDamageTypesStore = defineStore('damageTypes', () => {
             randomized: opt.key === "stun"
           }
         ])
-      ) as Record<DamageComponentKey, any>,
+      ) as Record<DamageComponentKey, DamageComponent>,
       randomProfileId: "0-200",
       color: "#6f7f90",
     });
@@ -69,17 +69,9 @@ export const useDamageTypesStore = defineStore('damageTypes', () => {
     if (target) target.armorEffectiveness = (Number.isFinite(value) ? value : 0) / 100;
   }
 
-  function componentPercent(damageType: DamageType, component: DamageComponentKey): number {
-    return damageType.damageComponents[component].percent;
-  }
-
   function setComponentPercent(id: string, component: DamageComponentKey, value: number): void {
     const target = getMutableDamageType(id);
     if (target) target.damageComponents[component].percent = (Number.isFinite(value) ? value : 0) / 100;
-  }
-
-  function componentRandomized(damageType: DamageType, component: DamageComponentKey): boolean {
-    return !!damageType.damageComponents[component].randomized;
   }
 
   function setComponentRandomized(id: string, component: DamageComponentKey, value: boolean): void {
@@ -99,10 +91,7 @@ export const useDamageTypesStore = defineStore('damageTypes', () => {
     addDamageType,
     removeDamageType,
     setArmorEffectiveness,
-    componentPercent,
     setComponentPercent,
-    componentRandomized,
     setComponentRandomized,
-    applyTranslations,
   };
 });
