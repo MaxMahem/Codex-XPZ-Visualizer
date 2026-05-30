@@ -3,6 +3,7 @@ import type {
   DamageBonusStat,
   DamageDistributionBucket,
   DamageComponentCurvePoint,
+  DamageMetricKey,
   DamagePoint,
   DamageRollResult,
   DamageType,
@@ -442,8 +443,7 @@ export function buildDamageComponentCurve(
   armor: number,
   damageTypes: DamageType[],
   randomProfiles: RandomProfile[] = [],
-): DamageComponentCurvePoint[] {
-  let cumulative = 0;
+): Record<DamageMetricKey, DamageComponentCurvePoint[]> {
   const damageType = damageTypeFor(weapon, damageTypes);
   const hpComp = getDamageComponent(damageType, "hp");
   const stunComp = getDamageComponent(damageType, "stun");
@@ -470,7 +470,22 @@ export function buildDamageComponentCurve(
   const energyRandomized = weapon.damageRandomizedOverrides?.energy ?? energyComp.randomized;
   const manaRandomized = weapon.damageRandomizedOverrides?.mana ?? manaComp.randomized;
 
-  return rollOutcomes(weapon, scenario, damageTypes, randomProfiles).map((outcome) => {
+  const curves: Record<DamageMetricKey, DamageComponentCurvePoint[]> = {
+    hp: [],
+    stun: [],
+    "hp-stun": [],
+    morale: [],
+    scaledMorale: [],
+    panicChance: [],
+    armor: [],
+    preArmor: [],
+    tu: [],
+    energy: [],
+    mana: [],
+  };
+
+  let cumulative = 0;
+  for (const outcome of rollOutcomes(weapon, scenario, damageTypes, randomProfiles)) {
     cumulative += outcome.probability;
     const postArmorDamage = damageFromRolledPower(
       weapon,
@@ -482,30 +497,31 @@ export function buildDamageComponentCurve(
     const hpDamage = expectedIntegerComponent(postArmorDamage, hpPercent, !!hpRandomized);
     const stunDamage = expectedIntegerComponent(postArmorDamage, stunPercent, !!stunRandomized);
     const moraleDamage = expectedIntegerComponent(postArmorDamage, moralePercent, !!moraleRandomized);
-    const scaledMorale = scaledMoraleDamage(moraleDamage, scenario);
     const armorDamage = expectedIntegerComponent(postArmorDamage, armorPercent, !!armorRandomized);
     const preArmorDamage = expectedIntegerComponent(outcome.rolledPower, preArmorPercent, !!preArmorRandomized);
     const tuDamage = expectedIntegerComponent(postArmorDamage, tuPercent, !!tuRandomized);
     const energyDamage = expectedIntegerComponent(postArmorDamage, energyPercent, !!energyRandomized);
     const manaDamage = expectedIntegerComponent(postArmorDamage, manaPercent, !!manaRandomized);
 
-    return {
-      percentile: cumulative * 100,
-      rollPercent: outcome.rollPercent,
-      rolledPower: outcome.rolledPower,
-      hpDamage,
-      stunDamage,
-      moraleDamage,
-      scaledMoraleDamage: scaledMorale,
-      panicChance: panicChanceFromScaledMoraleDamage(scaledMorale),
-      armorDamage,
-      preArmorDamage,
-      tuDamage,
-      energyDamage,
-      manaDamage,
-      totalDamage: hpDamage + stunDamage,
-    };
-  });
+    const scaledMorale = scaledMoraleDamage(moraleDamage, scenario);
+    const percentile = cumulative * 100;
+    const rollPercent = outcome.rollPercent;
+    const rolledPower = outcome.rolledPower;
+
+    curves.hp.push({ percentile, rollPercent, rolledPower, value: hpDamage });
+    curves.stun.push({ percentile, rollPercent, rolledPower, value: stunDamage });
+    curves["hp-stun"].push({ percentile, rollPercent, rolledPower, value: hpDamage + stunDamage });
+    curves.morale.push({ percentile, rollPercent, rolledPower, value: moraleDamage });
+    curves.scaledMorale.push({ percentile, rollPercent, rolledPower, value: scaledMorale });
+    curves.panicChance.push({ percentile, rollPercent, rolledPower, value: panicChanceFromScaledMoraleDamage(scaledMorale) });
+    curves.armor.push({ percentile, rollPercent, rolledPower, value: armorDamage + preArmorDamage });
+    curves.preArmor.push({ percentile, rollPercent, rolledPower, value: preArmorDamage });
+    curves.tu.push({ percentile, rollPercent, rolledPower, value: tuDamage });
+    curves.energy.push({ percentile, rollPercent, rolledPower, value: energyDamage });
+    curves.mana.push({ percentile, rollPercent, rolledPower, value: manaDamage });
+  }
+
+  return curves;
 }
 
 export function buildDamageDistribution(

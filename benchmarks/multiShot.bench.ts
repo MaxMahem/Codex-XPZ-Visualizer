@@ -151,7 +151,7 @@ for (const benchCase of cases) {
 
   results.push(measure(
     benchCase.name,
-    `curve ${singleShotCurve.length} ->`,
+    `curve ${singleShotCurve.hp.length} ->`,
     () => buildMultiShotComponentCurve(singleShotCurve, benchCase.shots, benchCase.metrics),
   ));
   results.push(measure(
@@ -231,10 +231,22 @@ if (sink === Number.MIN_SAFE_INTEGER) {
   console.log("unreachable", sink);
 }
 
-function measure<T extends { length: number }>(
+function getRecordOrArrayLength(val: any): number {
+  if (val && typeof val === "object") {
+    if (Array.isArray(val)) {
+      return val.length;
+    }
+    if (val.hp && Array.isArray(val.hp)) {
+      return val.hp.length;
+    }
+  }
+  return 0;
+}
+
+function measure(
   caseName: string,
   kind: string,
-  run: () => T,
+  run: () => any,
 ): BenchResult {
   console.log(`Running ${caseName} / ${kind}`);
   run();
@@ -247,7 +259,7 @@ function measure<T extends { length: number }>(
     const started = performance.now();
     for (let iteration = 0; iteration < iterations; iteration += 1) {
       const output = run();
-      outputSize = output.length;
+      outputSize = getRecordOrArrayLength(output);
       sink += outputSize;
     }
     samples.push((performance.now() - started) / iterations);
@@ -265,10 +277,10 @@ function measure<T extends { length: number }>(
   };
 }
 
-function timeIterations(run: () => { length: number }, iterations: number): number {
+function timeIterations(run: () => any, iterations: number): number {
   const started = performance.now();
   for (let index = 0; index < iterations; index += 1) {
-    sink += run().length;
+    sink += getRecordOrArrayLength(run());
   }
   return (performance.now() - started) / iterations;
 }

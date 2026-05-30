@@ -23,12 +23,31 @@ const weaponsStore = useWeaponsStore();
 const visibleRollComponents = ref<DamageMetricKey[]>(["hp", "stun", "armor"]);
 const shotCount = ref(1);
 const focusedWeaponIdRef = toRef(props, "focusedWeaponId");
-const { currentArmor, modeledShotCount, rollStats, rollWeapon, rollExpectedComponents } = useRollDamageModel(
+
+const hpModel = useRollDamageModel(
   focusedWeaponIdRef,
+  ref("hp"),
   visibleRollComponents,
   undefined,
   shotCount,
 );
+
+const panicChanceModel = useRollDamageModel(
+  focusedWeaponIdRef,
+  ref("panicChance"),
+  visibleRollComponents,
+  undefined,
+  shotCount,
+);
+
+const { rollWeapon, modeledShotCount, currentArmor, rollExpectedComponents } = hpModel;
+
+const rollStats = computed(() => ({
+  zeroChance: hpModel.rollStats.value.zeroChance,
+  killChance: hpModel.rollStats.value.killChance,
+  koChance: hpModel.rollStats.value.koChance,
+  effectivePanicChance: panicChanceModel.rollStats.value.effectivePanicChance,
+}));
 
 const { scenario } = storeToRefs(scenarioStore);
 const { editableWeapons } = storeToRefs(weaponsStore);

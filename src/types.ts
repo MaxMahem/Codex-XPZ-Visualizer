@@ -168,17 +168,7 @@ export interface DamageComponentCurvePoint {
   percentile: number;
   rollPercent: number;
   rolledPower: number;
-  hpDamage: number;
-  stunDamage: number;
-  moraleDamage: number;
-  armorDamage: number;
-  preArmorDamage: number;
-  tuDamage: number;
-  energyDamage: number;
-  manaDamage: number;
-  scaledMoraleDamage: number;
-  panicChance: number;
-  totalDamage: number;
+  value: number;
 }
 
 export interface RandomProfile {

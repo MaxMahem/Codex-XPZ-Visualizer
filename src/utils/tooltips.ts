@@ -17,24 +17,27 @@ export function targetHpTooltip(hitPoints: number): string {
 }
 
 export function percentileTooltip(
-  result: DamageComponentCurvePoint,
+  point: { percentile: number; rollPercent: number; rolledPower: number },
+  values: Record<DamageMetricKey, number> & { rawMorale?: number },
   visibleComponents: DamageMetricKey[] = ["hp", "stun"],
 ): string {
   const visible = visibleComponents
     .map((component) => {
       if (component === "morale") {
-        return `Morale ${formatDamage(result.scaledMoraleDamage)} (${formatDamage(result.moraleDamage)} raw)`;
+        const raw = values.rawMorale !== undefined ? values.rawMorale : (values.morale ?? 0);
+        const scaled = values.scaledMorale ?? values.morale ?? 0;
+        return `Morale ${formatDamage(scaled)} (${formatDamage(raw)} raw)`;
       }
       if (component === "panicChance") {
-        return `Panic Chance ${formatDamage(result.panicChance)}%`;
+        return `Panic Chance ${formatDamage(values.panicChance ?? 0)}%`;
       }
-      return `${componentLabel(component)} ${formatDamage(componentDamage(result, component))}`;
+      return `${componentLabel(component)} ${formatDamage(values[component] ?? 0)}`;
     })
     .join(", ");
   const stack = visibleComponents.includes("hp") || visibleComponents.includes("stun")
-    ? `Stack ${formatDamage((visibleComponents.includes("hp") ? result.hpDamage : 0) + (visibleComponents.includes("stun") ? result.stunDamage : 0))}. `
+    ? `Stack ${formatDamage((visibleComponents.includes("hp") ? (values.hp ?? 0) : 0) + (visibleComponents.includes("stun") ? (values.stun ?? 0) : 0))}. `
     : "";
-  return `${Math.round(result.percentile)}th percentile. ${stack}${visible}. Underlying roll: ${formatDamage(result.rolledPower)} power (${Math.round(result.rollPercent)}%).`;
+  return `${Math.round(point.percentile)}th percentile. ${stack}${visible}. Underlying roll: ${formatDamage(point.rolledPower)} power (${Math.round(point.rollPercent)}%).`;
 }
 
 export function weaponTooltip(
@@ -125,21 +128,6 @@ function damageBonusTooltip(weapon: WeaponSystem): string {
     .join("; ");
 }
 
-function componentDamage(result: DamageComponentCurvePoint, component: DamageMetricKey): number {
-  switch (component) {
-    case "hp": return result.hpDamage;
-    case "stun": return result.stunDamage;
-    case "hp-stun": return result.hpDamage + result.stunDamage;
-    case "morale": return result.scaledMoraleDamage;
-    case "scaledMorale": return result.scaledMoraleDamage;
-    case "panicChance": return result.panicChance;
-    case "armor": return result.armorDamage + result.preArmorDamage;
-    case "preArmor": return result.preArmorDamage;
-    case "tu": return result.tuDamage;
-    case "energy": return result.energyDamage;
-    case "mana": return result.manaDamage;
-  }
-}
 
 function componentLabel(component: DamageMetricKey): string {
   switch (component) {

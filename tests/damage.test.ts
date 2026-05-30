@@ -32,7 +32,7 @@ import {
   importOpenXcomUnits,
 } from "../src/rulImport.ts";
 import { damageModifiersForArmor, mergeArmorsById } from "../src/stores/scenarioStoreHelpers.ts";
-import type { DamageType, RandomProfile, Scenario, WeaponSystem } from "../src/types.ts";
+import type { DamageType, RandomProfile, Scenario, WeaponSystem, DamageMetricKey, DamageComponentCurvePoint } from "../src/types.ts";
 import { translatedDamageTypeName } from "../src/utils/damageTypeTranslations.ts";
 
 const scenario: Scenario = {
@@ -195,47 +195,57 @@ test("multi-shot damage stats match the full hp and stun distribution", () => {
   assert.ok(Math.abs(directStats.koChance - koChance) < 1e-12);
 });
 
+function createTestCurve(
+  hpValues: number[],
+  rolledPowers: number[] = [],
+  armorValues: number[] = [],
+): Record<DamageMetricKey, DamageComponentCurvePoint[]> {
+  const percentiles = hpValues.map((_, index) => Math.round((100 * (index + 1)) / hpValues.length));
+  
+  const curves: Record<DamageMetricKey, DamageComponentCurvePoint[]> = {
+    hp: [],
+    stun: [],
+    "hp-stun": [],
+    morale: [],
+    scaledMorale: [],
+    panicChance: [],
+    armor: [],
+    preArmor: [],
+    tu: [],
+    energy: [],
+    mana: [],
+  };
+
+  for (let i = 0; i < hpValues.length; i++) {
+    const percentile = percentiles[i];
+    const rolledPower = rolledPowers[i] ?? hpValues[i];
+    const rollPercent = rolledPower;
+
+    curves.hp.push({ percentile, rollPercent, rolledPower, value: hpValues[i] });
+    curves.stun.push({ percentile, rollPercent, rolledPower, value: 0 });
+    curves["hp-stun"].push({ percentile, rollPercent, rolledPower, value: hpValues[i] });
+    curves.morale.push({ percentile, rollPercent, rolledPower, value: 0 });
+    curves.scaledMorale.push({ percentile, rollPercent, rolledPower, value: 0 });
+    curves.panicChance.push({ percentile, rollPercent, rolledPower, value: 0 });
+    curves.armor.push({ percentile, rollPercent, rolledPower, value: armorValues[i] ?? 0 });
+    curves.preArmor.push({ percentile, rollPercent, rolledPower, value: 0 });
+    curves.tu.push({ percentile, rollPercent, rolledPower, value: 0 });
+    curves.energy.push({ percentile, rollPercent, rolledPower, value: 0 });
+    curves.mana.push({ percentile, rollPercent, rolledPower, value: 0 });
+  }
+
+  return curves;
+}
+
 test("multi-shot component curve preserves one-shot curve and sums percentiles for volleys", () => {
-  const oneShot = [
-    {
-      percentile: 50,
-      rollPercent: 50,
-      rolledPower: 20,
-      hpDamage: 20,
-      stunDamage: 0,
-      moraleDamage: 0,
-      armorDamage: 0,
-      preArmorDamage: 0,
-      tuDamage: 0,
-      energyDamage: 0,
-      manaDamage: 0,
-      scaledMoraleDamage: 0,
-      panicChance: 0,
-      totalDamage: 20,
-    },
-    {
-      percentile: 100,
-      rollPercent: 100,
-      rolledPower: 40,
-      hpDamage: 40,
-      stunDamage: 0,
-      moraleDamage: 0,
-      armorDamage: 0,
-      preArmorDamage: 0,
-      tuDamage: 0,
-      energyDamage: 0,
-      manaDamage: 0,
-      scaledMoraleDamage: 0,
-      panicChance: 0,
-      totalDamage: 40,
-    },
-  ];
+  const oneShot = createTestCurve([20, 40]);
 
-  assert.deepEqual(buildMultiShotComponentCurve(oneShot, 1), oneShot);
+  const preserved = buildMultiShotComponentCurve(oneShot, 1, ["hp"]);
+  assert.deepEqual(preserved.hp, oneShot.hp);
 
-  const twoShots = buildMultiShotComponentCurve(oneShot, 2);
+  const twoShots = buildMultiShotComponentCurve(oneShot, 2, ["hp"]);
   assert.deepEqual(
-    twoShots.map((point) => [point.percentile, point.hpDamage, point.rolledPower]),
+    twoShots.hp.map((point) => [point.percentile, point.value, point.rolledPower]),
     [
       [25, 40, 40],
       [75, 60, 60],
@@ -245,48 +255,15 @@ test("multi-shot component curve preserves one-shot curve and sums percentiles f
 });
 
 test("multi-shot component curve only convolves requested component dimensions", () => {
-  const oneShot = [
-    {
-      percentile: 50,
-      rollPercent: 50,
-      rolledPower: 20,
-      hpDamage: 10,
-      stunDamage: 0,
-      moraleDamage: 0,
-      armorDamage: 1,
-      preArmorDamage: 0,
-      tuDamage: 0,
-      energyDamage: 0,
-      manaDamage: 0,
-      scaledMoraleDamage: 0,
-      panicChance: 0,
-      totalDamage: 10,
-    },
-    {
-      percentile: 100,
-      rollPercent: 100,
-      rolledPower: 40,
-      hpDamage: 10,
-      stunDamage: 0,
-      moraleDamage: 0,
-      armorDamage: 9,
-      preArmorDamage: 0,
-      tuDamage: 0,
-      energyDamage: 0,
-      manaDamage: 0,
-      scaledMoraleDamage: 0,
-      panicChance: 0,
-      totalDamage: 10,
-    },
-  ];
+  const oneShot = createTestCurve([10, 10], [20, 40], [1, 9]);
 
   const hpOnly = buildMultiShotComponentCurve(oneShot, 2, ["hp"]);
   const hpAndArmor = buildMultiShotComponentCurve(oneShot, 2, ["hp", "armor"]);
 
-  assert.equal(hpOnly.length, 1);
-  assert.equal(hpOnly[0].hpDamage, 20);
-  assert.equal(hpOnly[0].armorDamage, 0);
-  assert.equal(hpAndArmor.length, 3);
+  assert.equal(hpOnly.hp.length, 1);
+  assert.equal(hpOnly.hp[0].value, 20);
+  assert.equal(hpOnly.armor.length, 0);
+  assert.equal(hpAndArmor.hp.length, 3);
 });
 
 test("metric-scoped single-shot curve matches canonical curve for requested metrics", () => {
@@ -306,24 +283,10 @@ test("metric-scoped single-shot curve matches canonical curve for requested metr
     ["hp", "stun", "armor", "panicChance"],
   );
 
-  assert.deepEqual(
-    scoped.map((point) => ({
-      hpDamage: point.hpDamage,
-      stunDamage: point.stunDamage,
-      armorDamage: point.armorDamage,
-      scaledMoraleDamage: point.scaledMoraleDamage,
-      panicChance: point.panicChance,
-      totalDamage: point.totalDamage,
-    })),
-    canonical.map((point) => ({
-      hpDamage: point.hpDamage,
-      stunDamage: point.stunDamage,
-      armorDamage: point.armorDamage,
-      scaledMoraleDamage: point.scaledMoraleDamage,
-      panicChance: point.panicChance,
-      totalDamage: point.totalDamage,
-    })),
-  );
+  assert.deepEqual(scoped.hp, canonical.hp);
+  assert.deepEqual(scoped.stun, canonical.stun);
+  assert.deepEqual(scoped.armor, canonical.armor);
+  assert.deepEqual(scoped.panicChance, canonical.panicChance);
 });
 
 test("projection curve produces monotonic multi-shot damage percentiles", () => {
@@ -337,10 +300,10 @@ test("projection curve produces monotonic multi-shot damage percentiles", () => 
     ["hp", "stun", "armor"],
   );
 
-  assert.ok(Math.abs((curve.at(-1)?.percentile ?? 0) - 100) < 1e-9);
-  for (let index = 1; index < curve.length; index += 1) {
-    assert.ok(curve[index].percentile >= curve[index - 1].percentile);
-    assert.ok(curve[index].totalDamage >= curve[index - 1].totalDamage);
+  assert.ok(Math.abs((curve.hp.at(-1)?.percentile ?? 0) - 100) < 1e-9);
+  for (let index = 1; index < curve.hp.length; index += 1) {
+    assert.ok(curve.hp[index].percentile >= curve.hp[index - 1].percentile);
+    assert.ok(curve.hp[index].value >= curve.hp[index - 1].value);
   }
 });
 

@@ -1,15 +1,11 @@
 import { computed, type Ref } from "vue";
 import {
-  buildDamageRollResults,
   expectedDamage,
   expectedDamageComponents,
 } from "../damage";
 import {
-  buildMultiShotComponentCurve,
   buildMultiShotDamageStatsForWeapon,
-  buildMultiShotDamageRollResults,
   buildMultiShotProjectionCurveForWeapon,
-  buildSingleShotComponentCurveForMetrics,
   multiplyExpectedDamageComponents,
 } from "../multiShotDamage";
 import { randomProfiles } from "../data";
@@ -20,7 +16,8 @@ import type { DamageComponentCurvePoint, DamageMetricKey } from "../types";
 
 export function useRollDamageModel(
   focusedWeaponId: Ref<string>,
-  visibleRollComponents: Ref<DamageMetricKey[]>,
+  metric: Ref<DamageMetricKey>,
+  allMetrics: Ref<DamageMetricKey[]>,
   rollHoverPercentile: Ref<number | null> = computed(() => null),
   shotCount: Ref<number> = computed(() => 1),
 ) {
@@ -39,20 +36,6 @@ export function useRollDamageModel(
       weaponsStore.fallbackWeapon,
   );
 
-  const singleShotRollResults = computed(() =>
-    buildDamageRollResults(
-      rollWeapon.value,
-      scenarioStore.scenario,
-      currentArmor.value,
-      damageTypesStore.editableDamageTypes,
-      randomProfiles,
-    ),
-  );
-
-  const rollResults = computed(() =>
-    buildMultiShotDamageRollResults(singleShotRollResults.value, modeledShotCount.value),
-  );
-
   const damageStats = computed(() =>
     buildMultiShotDamageStatsForWeapon(
       rollWeapon.value,
@@ -64,28 +47,18 @@ export function useRollDamageModel(
     ),
   );
 
-  const singleShotComponentCurve = computed(() =>
-    buildSingleShotComponentCurveForMetrics(
-      rollWeapon.value,
-      scenarioStore.scenario,
-      currentArmor.value,
-      damageTypesStore.editableDamageTypes,
-      randomProfiles,
-      visibleRollComponents.value,
-    ),
-  );
-
-  const componentCurve = computed(() =>
-    buildMultiShotProjectionCurveForWeapon(
+  const componentCurve = computed(() => {
+    const curves = buildMultiShotProjectionCurveForWeapon(
       rollWeapon.value,
       scenarioStore.scenario,
       currentArmor.value,
       damageTypesStore.editableDamageTypes,
       modeledShotCount.value,
       randomProfiles,
-      visibleRollComponents.value,
-    ),
-  );
+      allMetrics.value,
+    );
+    return curves[metric.value] ?? [];
+  });
 
   const rollExpectedDamage = computed(() =>
     expectedDamage(
@@ -110,36 +83,53 @@ export function useRollDamageModel(
     ),
   );
 
-  const inspectedCurvePoint = computed(() => {
+  const inspectedCurveIndex = computed(() => {
     const points = componentCurve.value;
-    if (points.length === 0) {
-      return null;
-    }
+    if (!points || points.length === 0) return null;
     const percentile = rollHoverPercentile.value ?? 50;
-    return points.reduce((closest, point) =>
-      Math.abs(point.percentile - percentile) < Math.abs(closest.percentile - percentile)
-        ? point
-        : closest,
-    );
+    let closestIndex = 0;
+    let minDiff = Math.abs(points[0].percentile - percentile);
+    for (let i = 1; i < points.length; i++) {
+      const diff = Math.abs(points[i].percentile - percentile);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestIndex = i;
+      }
+    }
+    return closestIndex;
+  });
+
+  const inspectedCurvePoint = computed(() => {
+    const index = inspectedCurveIndex.value;
+    if (index === null) return null;
+    const points = componentCurve.value;
+    const basePoint = points[index];
+    if (!basePoint) return null;
+
+    return {
+      percentile: basePoint.percentile,
+      rollPercent: basePoint.rollPercent,
+      rolledPower: basePoint.rolledPower,
+      value: basePoint.value,
+    };
   });
 
   const rollStats = computed(() => {
     const stats = damageStats.value;
-    const damageComponents = visibleRollComponents.value.filter((component) => component !== "panicChance");
-    const damages = componentCurve.value.flatMap((result) => [
-      result.totalDamage,
-      ...damageComponents.map((component) => visibleComponentDamage(result, component)),
-    ]);
+    const points = componentCurve.value;
+    const damages = points.map((point) => point.value);
     const minDamage = Math.min(...damages, 0);
     const maxDamage = Math.max(...damages, scenarioStore.scenario.hitPoints, rollExpectedDamage.value, 10);
 
     return {
       minDamage,
       maxDamage,
-      effectivePanicChance: componentCurve.value.reduce((sum, point, index, points) => {
-        const previous = index === 0 ? 0 : points[index - 1].percentile / 100;
-        return sum + point.panicChance * (point.percentile / 100 - previous);
-      }, 0),
+      effectivePanicChance: metric.value === "panicChance"
+        ? points.reduce((sum, point, index, pts) => {
+            const previous = index === 0 ? 0 : pts[index - 1].percentile / 100;
+            return sum + point.value * (point.percentile / 100 - previous);
+          }, 0)
+        : 0,
       zeroChance: stats.zeroChance,
       killChance: stats.killChance,
       koChance: stats.koChance,
@@ -151,27 +141,11 @@ export function useRollDamageModel(
     rollWeapon,
     componentCurve,
     currentArmor,
+    inspectedCurveIndex,
     inspectedCurvePoint,
     modeledShotCount,
     rollExpectedDamage,
     rollExpectedComponents,
-    rollResults,
     rollStats,
   };
-}
-
-function visibleComponentDamage(result: DamageComponentCurvePoint, component: DamageMetricKey): number {
-  switch (component) {
-    case "hp": return result.hpDamage;
-    case "stun": return result.stunDamage;
-    case "hp-stun": return result.hpDamage + result.stunDamage;
-    case "morale": return result.scaledMoraleDamage;
-    case "scaledMorale": return result.scaledMoraleDamage;
-    case "panicChance": return result.panicChance;
-    case "armor": return result.armorDamage + result.preArmorDamage;
-    case "preArmor": return result.preArmorDamage;
-    case "tu": return result.tuDamage;
-    case "energy": return result.energyDamage;
-    case "mana": return result.manaDamage;
-  }
 }
