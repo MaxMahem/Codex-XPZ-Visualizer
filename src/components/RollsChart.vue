@@ -15,7 +15,6 @@ const props = defineProps<{
 const rollHoverPercentile = ref<number | null>(null);
 const focusedWeaponIdRef = toRef(props, "focusedWeaponId");
 const shotCountRef = toRef(props, "shotCount");
-const visibleRollComponentsRef = toRef(props, "visibleRollComponents");
 const scenarioStore = useScenarioStore();
 
 // Compute the union of visible components plus hp-stun (if hp or stun is visible)

@@ -12,7 +12,7 @@ import { randomProfiles } from "../data";
 import { useDamageTypesStore } from "../stores/damageTypesStore";
 import { useScenarioStore } from "../stores/scenarioStore";
 import { useWeaponsStore } from "../stores/weaponsStore";
-import type { DamageComponentCurvePoint, DamageMetricKey } from "../types";
+import type { DamageMetricKey } from "../types";
 
 export function useRollDamageModel(
   focusedWeaponId: Ref<string>,
@@ -126,9 +126,9 @@ export function useRollDamageModel(
       maxDamage,
       effectivePanicChance: metric.value === "panicChance"
         ? points.reduce((sum, point, index, pts) => {
-            const previous = index === 0 ? 0 : pts[index - 1].percentile / 100;
-            return sum + point.value * (point.percentile / 100 - previous);
-          }, 0)
+          const previous = index === 0 ? 0 : pts[index - 1].percentile / 100;
+          return sum + point.value * (point.percentile / 100 - previous);
+        }, 0)
         : 0,
       zeroChance: stats.zeroChance,
       killChance: stats.killChance,
